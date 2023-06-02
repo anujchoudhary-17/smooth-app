@@ -209,34 +209,34 @@ packages:
     dependency: transitive
     description:
       name: camera_android
-      sha256: "45313e6bd5e74ac369d5bef928ab81594b5494762ac5cb8f4f255c01daa77622"
+      sha256: f83e406d34f5faa80bf0f5c3beee4b4c11da94a94e9621c1bb8e312988621b4b
       url: "https://pub.dev"
     source: hosted
-    version: "0.10.8"
+    version: "0.10.8+2"
   camera_avfoundation:
     dependency: transitive
     description:
       name: camera_avfoundation
-      sha256: "7ac8b950672716722af235eed7a7c37896853669800b7da706bb0a9fd41d3737"
+      sha256: "1a416e452b30955b392f4efbf23291d3f2ba3660a85e1628859eb62d2a2bab26"
       url: "https://pub.dev"
     source: hosted
-    version: "0.9.13+1"
+    version: "0.9.13+2"
   camera_platform_interface:
     dependency: transitive
     description:
       name: camera_platform_interface
-      sha256: "525017018d116c5db8c4c43ec2d9b1663216b369c9f75149158280168a7ce472"
+      sha256: "60fa0bb62a4f3bf3a7c413e31e4cd01b69c779ccc8e4668904a24581b86c316b"
       url: "https://pub.dev"
     source: hosted
-    version: "2.5.0"
+    version: "2.5.1"
   camera_web:
     dependency: transitive
     description:
       name: camera_web
-      sha256: d77965f32479ee6d8f48205dcf10f845d7210595c6c00faa51eab265d1cae993
+      sha256: bcbd775fb3a9d51cc3ece899d54ad66f6306410556bac5759f78e13f9228841f
       url: "https://pub.dev"
     source: hosted
-    version: "0.3.1+3"
+    version: "0.3.1+4"
   carousel_slider:
     dependency: "direct main"
     description:
@@ -448,6 +448,30 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  flutter_custom_tabs:
+    dependency: "direct main"
+    description:
+      name: flutter_custom_tabs
+      sha256: bebb9552438eb3aea8f8511d48e41abdd0d05ff3e9a74622a4d1acd2bffd242c
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.4"
+  flutter_custom_tabs_platform_interface:
+    dependency: transitive
+    description:
+      name: flutter_custom_tabs_platform_interface
+      sha256: bbd2d9a2ff22d27e079a35302ddd3da9f2328110c370d56c81655a7ba306fee2
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.1"
+  flutter_custom_tabs_web:
+    dependency: transitive
+    description:
+      name: flutter_custom_tabs_web
+      sha256: d735abff9a1b215018dfe2584f131fe0a3bb0e3b685fbd6ae8a55cf5c4d7dcd8
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.0"
   flutter_driver:
     dependency: "direct dev"
     description: flutter
@@ -625,6 +649,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.1"
+  go_router:
+    dependency: "direct main"
+    description:
+      name: go_router
+      sha256: b185cf91b5a6861f4c2a92ddaa65f8919909416ee033e00751f7c67ebee1588d
+      url: "https://pub.dev"
+    source: hosted
+    version: "7.0.2"
   hive:
     dependency: "direct main"
     description:
@@ -669,10 +701,10 @@ packages:
     dependency: "direct main"
     description:
       name: image
-      sha256: "73964e3609fb96e01e69b0924b939967c556e46c7ff05db2ea9e31019000f4ef"
+      sha256: a72242c9a0ffb65d03de1b7113bc4e189686fc07c7147b8b41811d0dd0e0d9bf
       url: "https://pub.dev"
     source: hosted
-    version: "4.0.16"
+    version: "4.0.17"
   image_picker:
     dependency: "direct main"
     description:
@@ -890,10 +922,10 @@ packages:
     dependency: "direct main"
     description:
       name: openfoodfacts
-      sha256: "04b2e2691042ac1ff55ba90871858e789daae249c5c5a477f3e14930a70e6d12"
+      sha256: "8c989cbe437bf09cd06e480af9500fa821a76ddc0b1f82cdb9084f9e906acea2"
       url: "https://pub.dev"
     source: hosted
-    version: "2.5.0"
+    version: "2.5.1"
   openfoodfacts_flutter_lints:
     dependency: "direct dev"
     description:
@@ -1200,10 +1232,10 @@ packages:
     dependency: "direct main"
     description:
       name: shared_preferences
-      sha256: ee6257848f822b8481691f20c3e6d2bfee2e9eccb2a3d249907fcfb198c55b41
+      sha256: "16d3fb6b3692ad244a695c0183fca18cf81fd4b821664394a781de42386bf022"
       url: "https://pub.dev"
     source: hosted
-    version: "2.0.18"
+    version: "2.1.1"
   shared_preferences_android:
     dependency: transitive
     description:

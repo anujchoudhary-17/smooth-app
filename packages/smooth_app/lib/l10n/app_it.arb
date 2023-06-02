@@ -495,6 +495,22 @@
     },
     "confirm_button_label": "Conferma",
     "send_image_button_label": "Invia immagine",
+    "crop_page_action_saving": "Saving the image…",
+    "@crop_page_action_saving": {
+        "description": "Action being performed on the crop page"
+    },
+    "crop_page_action_cropping": "Cropping the image…",
+    "@crop_page_action_cropping": {
+        "description": "Action being performed on the crop page"
+    },
+    "crop_page_action_local": "Saving a local version…",
+    "@crop_page_action_local": {
+        "description": "Action being performed on the crop page"
+    },
+    "crop_page_action_server": "Preparing a call to the server…",
+    "@crop_page_action_server": {
+        "description": "Action being performed on the crop page"
+    },
     "front_packaging_photo_title": "Foto dell'Imballaggio Anteriore",
     "ingredients_photo_title": "Foto degli Ingredienti",
     "nutritional_facts_photo_title": "Foto valori nutrizionali",
@@ -688,21 +704,21 @@
             "percent": {}
         }
     },
-    "plural_ago_days": "{count,plural, =1{un giorno fa} other{{count} giorni fa}}",
+    "plural_ago_days": "{count,plural,  =1{un giorno fa} other{{count} giorni fa}}",
     "@plural_ago_days": {
         "description": "Cached results from: x days ago",
         "placeholders": {
             "count": {}
         }
     },
-    "plural_ago_hours": "{count,plural, =1{un'ora fa} other{{count} ore fa}}",
+    "plural_ago_hours": "{count,plural,  =1{un'ora fa} other{{count} ore fa}}",
     "@plural_ago_hours": {
         "description": "Cached results from: x hours ago",
         "placeholders": {
             "count": {}
         }
     },
-    "plural_ago_minutes": "{count,plural, =0{meno di un minuto fa} =1{un minuto fa} other{{count} minuti fa}}",
+    "plural_ago_minutes": "{count,plural,  =0{meno di un minuto fa} =1{un minuto fa} other{{count} minuti fa}}",
     "@plural_ago_minutes": {
         "description": "Cached results from: x minutes ago",
         "placeholders": {

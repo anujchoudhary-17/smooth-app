@@ -495,6 +495,22 @@
     },
     "confirm_button_label": "Bekræft",
     "send_image_button_label": "Indsend foto",
+    "crop_page_action_saving": "Saving the image…",
+    "@crop_page_action_saving": {
+        "description": "Action being performed on the crop page"
+    },
+    "crop_page_action_cropping": "Cropping the image…",
+    "@crop_page_action_cropping": {
+        "description": "Action being performed on the crop page"
+    },
+    "crop_page_action_local": "Saving a local version…",
+    "@crop_page_action_local": {
+        "description": "Action being performed on the crop page"
+    },
+    "crop_page_action_server": "Preparing a call to the server…",
+    "@crop_page_action_server": {
+        "description": "Action being performed on the crop page"
+    },
     "front_packaging_photo_title": "Emballageforsidefoto",
     "ingredients_photo_title": "Ingrediensfoto",
     "nutritional_facts_photo_title": "Næringsfaktafoto",
@@ -695,14 +711,14 @@
             "count": {}
         }
     },
-    "plural_ago_hours": "{count,plural, =1{én time siden} other{{count} timer siden}}",
+    "plural_ago_hours": "{count,plural,  =1{én time siden} other{{count} timer siden}}",
     "@plural_ago_hours": {
         "description": "Cached results from: x hours ago",
         "placeholders": {
             "count": {}
         }
     },
-    "plural_ago_minutes": "{count,plural, =0{under ét minut siden} =1{ét minut siden} other{{count} minutter siden}}",
+    "plural_ago_minutes": "{count,plural,  =0{under ét minut siden} =1{ét minut siden} other{{count} minutter siden}}",
     "@plural_ago_minutes": {
         "description": "Cached results from: x minutes ago",
         "placeholders": {
@@ -716,7 +732,7 @@
             "count": {}
         }
     },
-    "plural_ago_weeks": "{count,plural, =1{én uge siden} other{{count} uger siden}}",
+    "plural_ago_weeks": "{count,plural,  =1{én uge siden} other{{count} uger siden}}",
     "@plural_ago_weeks": {
         "description": "Cached results from: x weeks ago",
         "placeholders": {
