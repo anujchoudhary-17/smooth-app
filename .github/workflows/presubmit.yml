@@ -2,9 +2,10 @@ name: SmoothApp Pre-Submit Tests
 
 on:
   pull_request:
-
-env:
-  FLUTTER_VERSION: '3.3.x'
+  
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -17,19 +18,23 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+
+      # Get the Flutter version from ./flutter-version.txt
+      - run: echo "FLUTTER_VERSION=$(cat flutter-version.txt)" >> $GITHUB_OUTPUT
+        id: flutter-version
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           #channel: stable
           cache: true
-          flutter-version: '3.7.12'
-          cache-key: current-stable
+          flutter-version: ${{ steps.flutter-version.outputs.FLUTTER_VERSION }}
+          cache-key: flutter-${{ hashFiles('flutter-version.txt')}}-${{ hashFiles('packages\smooth_app\pubspec.lock')}}
 
       - run: flutter --version
 
-      # Get dependencies.
+      # Get dependencies
       - name: Get dependencies
         run: ci/pub_upgrade.sh
 
@@ -37,7 +42,7 @@ jobs:
       - name: Check for formatting issues (run "dart format . ")
         run: dart format --set-exit-if-changed .
 
-      # analyze Dart for errors
+      # Analyze Dart for errors
       - name: Analyze code
         run: flutter analyze --fatal-infos --fatal-warnings .
 

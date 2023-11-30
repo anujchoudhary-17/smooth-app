@@ -11,6 +11,8 @@ import 'package:smooth_app/generic_lib/loading_dialog.dart';
 import 'package:smooth_app/generic_lib/widgets/smooth_text_form_field.dart';
 import 'package:smooth_app/helpers/analytics_helper.dart';
 import 'package:smooth_app/helpers/user_management_helper.dart';
+import 'package:smooth_app/query/product_query.dart';
+import 'package:smooth_app/widgets/smooth_app_bar.dart';
 import 'package:smooth_app/widgets/smooth_scaffold.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -45,10 +47,7 @@ class _SignUpPageState extends State<SignUpPage> with TraceableClientMixin {
   bool _disagreed = false;
 
   @override
-  String get traceTitle => 'sign_up_page';
-
-  @override
-  String get traceName => 'Opened sign_up_page';
+  String get actionName => 'Opened sign_up_page';
 
   @override
   Widget build(BuildContext context) {
@@ -76,7 +75,7 @@ class _SignUpPageState extends State<SignUpPage> with TraceableClientMixin {
 
     return SmoothScaffold(
       fixKeyboard: true,
-      appBar: AppBar(
+      appBar: SmoothAppBar(
         title: Text(appLocalizations.sign_up_page_title),
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -333,6 +332,9 @@ class _SignUpPageState extends State<SignUpPage> with TraceableClientMixin {
         email: _emailController.trimmedText,
         newsletter: _subscribe,
         orgName: _foodProducer ? _brandController.trimmedText : null,
+        country: ProductQuery.getCountry(),
+        language: ProductQuery.getLanguage(),
+        uriHelper: ProductQuery.uriProductHelper,
       ),
       title: appLocalisations.sign_up_page_action_doing_it,
     );
@@ -368,14 +370,33 @@ class _SignUpPageState extends State<SignUpPage> with TraceableClientMixin {
             .contains(SignUpStatusError.USERNAME_ALREADY_USED)) {
           _userFocusNode.requestFocus();
           errorMessage = appLocalisations.sign_up_page_user_name_already_used;
+        } else if (status.statusErrors!
+            .contains(SignUpStatusError.SERVER_BUSY)) {
+          errorMessage = appLocalisations.sign_up_page_server_busy;
         } else {
-          errorMessage = status.error;
+          // Let's try to find the error in
+          final Iterable<RegExpMatch> allMatches =
+              RegExp('(<li class="error">)(.*?)(</li>)')
+                  .allMatches(status.error!);
+          if (allMatches.isNotEmpty) {
+            final StringBuffer buffer = StringBuffer();
+            for (final RegExpMatch match in allMatches) {
+              if (buffer.isNotEmpty) {
+                buffer.write('\n\n');
+              }
+
+              buffer.write(match.group(2));
+            }
+            errorMessage = buffer.toString();
+          } else {
+            errorMessage = status.error;
+          }
         }
       }
 
-      // ignore: use_build_context_synchronously
-      await LoadingDialog.error(context: context, title: errorMessage);
-
+      if (context.mounted) {
+        await LoadingDialog.error(context: context, title: errorMessage);
+      }
       return;
     }
     AnalyticsHelper.trackEvent(AnalyticsEvent.registerAction);
@@ -383,7 +404,9 @@ class _SignUpPageState extends State<SignUpPage> with TraceableClientMixin {
       return;
     }
     await context.read<UserManagementProvider>().putUser(user);
-    // ignore: use_build_context_synchronously
+    if (!context.mounted) {
+      return;
+    }
     await showDialog<void>(
       context: context,
       builder: (BuildContext context) => SmoothAlertDialog(

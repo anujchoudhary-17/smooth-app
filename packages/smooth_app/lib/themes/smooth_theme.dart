@@ -38,7 +38,8 @@ class SmoothTheme {
     }
 
     return ThemeData(
-      primaryColor: const Color(0xFF341100),
+      useMaterial3: false,
+      primaryColor: DARK_BROWN_COLOR,
       colorScheme: myColorScheme,
       canvasColor: themeProvider.currentTheme == THEME_AMOLED
           ? myColorScheme.background
@@ -48,7 +49,7 @@ class SmoothTheme {
         showSelectedLabels: true,
         selectedItemColor: brightness == Brightness.dark
             ? myColorScheme.primary
-            : const Color(0xFF341100),
+            : DARK_BROWN_COLOR,
         selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
         showUnselectedLabels: true,
         unselectedIconTheme: const IconThemeData(size: 20.0),

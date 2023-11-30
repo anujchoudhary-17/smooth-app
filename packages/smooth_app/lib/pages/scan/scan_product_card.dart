@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:openfoodfacts/openfoodfacts.dart';
 import 'package:provider/provider.dart';
 import 'package:smooth_app/data_models/product_preferences.dart';
+import 'package:smooth_app/generic_lib/design_constants.dart';
 import 'package:smooth_app/pages/navigator/app_navigator.dart';
 import 'package:smooth_app/pages/product/hideable_container.dart';
 import 'package:smooth_app/pages/product/summary_card.dart';
@@ -30,7 +31,14 @@ class ScanProductCard extends StatelessWidget {
       child: Hero(
         tag: product.barcode ?? '',
         child: HideableContainer(
-          child: SummaryCard(product, productPreferences),
+          child: SummaryCard(
+            product,
+            productPreferences,
+            attributeGroupsClickable: false,
+            padding: const EdgeInsets.symmetric(
+              vertical: VERY_SMALL_SPACE,
+            ),
+          ),
         ),
       ),
     );

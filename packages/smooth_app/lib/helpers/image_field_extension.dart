@@ -12,29 +12,6 @@ extension ImageFieldSmoothieExtension on ImageField {
     ImageField.PACKAGING,
   ];
 
-  static const List<ImageField> orderedAll = <ImageField>[
-    ImageField.FRONT,
-    ImageField.INGREDIENTS,
-    ImageField.NUTRITION,
-    ImageField.PACKAGING,
-    ImageField.OTHER,
-  ];
-
-  String? getUrl(final Product product) {
-    switch (this) {
-      case ImageField.FRONT:
-        return product.imageFrontUrl;
-      case ImageField.INGREDIENTS:
-        return product.imageIngredientsUrl;
-      case ImageField.NUTRITION:
-        return product.imageNutritionUrl;
-      case ImageField.PACKAGING:
-        return product.imagePackagingUrl;
-      case ImageField.OTHER:
-        return null;
-    }
-  }
-
   void setUrl(final Product product, final String url) {
     switch (this) {
       case ImageField.FRONT:
@@ -81,7 +58,7 @@ extension ImageFieldSmoothieExtension on ImageField {
       case ImageField.PACKAGING:
         return appLocalizations.recycling_photo_title;
       case ImageField.OTHER:
-        return appLocalizations.other_interesting_photo_title;
+        return appLocalizations.take_more_photo_title;
     }
   }
 
@@ -112,13 +89,14 @@ extension ImageFieldSmoothieExtension on ImageField {
       case ImageField.PACKAGING:
         return appLocalizations.recycling_photo_button_label;
       case ImageField.OTHER:
-        return appLocalizations.other_interesting_photo_button_label;
+        return appLocalizations.take_more_photo_button_label;
     }
   }
 
   Widget getPhotoButton(
     final BuildContext context,
     final Product product,
+    final bool isLoggedInMandatory,
   ) =>
       SmoothLargeButtonWithIcon(
         onPressed: () async => Navigator.push(
@@ -127,6 +105,7 @@ extension ImageFieldSmoothieExtension on ImageField {
             builder: (_) => ProductImageSwipeableView.imageField(
               imageField: this,
               product: product,
+              isLoggedInMandatory: isLoggedInMandatory,
             ),
           ),
         ),

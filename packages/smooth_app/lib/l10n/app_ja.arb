@@ -121,13 +121,13 @@
     "@Introduction screen": {},
     "welcomeToOpenFoodFacts": "Open Food Factsへようこそ",
     "@welcomeToOpenFoodFacts": {},
-    "whatIsOff": "Open Food Factsは、地域コミュニティによって運営されているグローバルな非営利団体です。",
+    "whatIsOff": "Open Food Facts is a global non-profit powered by local communities.",
     "@whatIsOff": {
-        "description": "Description of Open Food Facts organization."
+        "description": "Description of Open Food Facts organization."
     },
     "offUtility": "あなたと地球にとって良い食品を選んでください。",
     "@offUtility": {
-        "description": "Description of what a user can use Open Food Facts for."
+        "description": "Description of what a user can use Open Food Facts for."
     },
     "productDataUtility": "あなたの好みに関連する食品データを確認する。",
     "@productDataUtility": {
@@ -142,11 +142,21 @@
         "description": "Description of what a user can use the Eco data in a product for."
     },
     "@user_management": {},
-    "sign_in_text": "Open Food Factsアカウントにサインインすることで、投稿を保存できます",
+    "sign_in_text": "Sign in to your Open Food Facts account to save your contributions",
     "incorrect_credentials": "ユーザー名またはパスワードが間違っています。",
+    "password_lost_incorrect_credentials": "このメールアドレスまたはユーザー名は存在しません。認証情報を確認してください。",
+    "password_lost_server_unavailable": "現在、サーバーの速度低下が発生しており、お詫び申し上げます。後でもう一度試してください。",
     "login": "ユーザー名",
     "@login": {
         "description": "Text field hint: unified name for either username or e-mail address"
+    },
+    "login_result_type_server_unreachable": "Network is unreachable",
+    "@login_result_type_server_unreachable": {
+        "description": "Error message when trying to log in without network"
+    },
+    "login_result_type_server_issue": "Problem on the server. Please try later.",
+    "@login_result_type_server_issue": {
+        "description": "Error message when trying to log in and the server does not answer correctly"
     },
     "login_page_username_or_email": "ユーザー名またはメールアドレスを入力してください",
     "login_page_password_error_empty": "パスワードを入力してください",
@@ -233,9 +243,9 @@
     "sign_up_page_confirm_password_hint": "パスワード再確認",
     "sign_up_page_confirm_password_error_empty": "パスワードの確認をしてください",
     "sign_up_page_confirm_password_error_invalid": "パスワードが一致しません",
-    "sign_up_page_agree_text": "Open Food Factsの規約に同意します",
+    "sign_up_page_agree_text": "I agree to the Open Food Facts",
     "@sign_up_page_agree_text": {
-        "description": "I agree to the Open Food Facts is followed by sign_up_page_terms_text"
+        "description": "I agree to the Open Food Facts is followed by sign_up_page_terms_text"
     },
     "sign_up_page_terms_text": "利用と貢献規約",
     "@sign_up_page_terms_text": {
@@ -243,7 +253,7 @@
     },
     "sign_up_page_agree_url": "https://jp.openfoodfacts.org/terms-of-use",
     "@sign_up_page_agree_url": {
-        "description": "Please insert the right url here. Go to the Open Food Facts homepage, switch to your country and then on the bottom left footer is Terms of use from which the url should be taken"
+        "description": "Please insert the right url here. Go to the Open Food Facts homepage, switch to your country and then on the bottom left footer is Terms of use from which the url should be taken"
     },
     "donate_url": "https://donate.openfoodfacts.org/",
     "@donate_url": {
@@ -256,10 +266,11 @@
     "sign_up_page_producer_checkbox": "私は食品生産者です",
     "sign_up_page_producer_hint": "生産者/ブランド",
     "sign_up_page_producer_error_empty": "生産者またはブランド名を入力してください",
-    "sign_up_page_subscribe_checkbox": "Open Food Factsのニュースレターを購読します。（いつでも購読を解除できます。）",
+    "sign_up_page_subscribe_checkbox": "I'd like to subscribe to the Open Food Facts newsletter (You can unsubscribe from it at any time)",
     "sign_up_page_user_name_already_used": "このユーザー名は既に存在します。別のユーザー名を入力してください。",
     "sign_up_page_email_already_exists": "既に存在します。アカウントにログインするか、別のメールアドレスをお試しください。",
     "sign_up_page_provide_valid_email": "有効なメールアドレスを入力してください。",
+    "sign_up_page_server_busy": "申し訳ございませんが、お客様のアカウントを作成する際に技術的な問題が発生しました。後でもう一度お試しください。",
     "@Settings": {},
     "settingsTitle": "設定",
     "@settingsTitle": {
@@ -281,11 +292,26 @@
     "@darkmode_system_default": {
         "description": "Indicator inside the darkmode switch (system default)"
     },
-    "thanks_for_contributing": "ご協力ありがとうございます！",
-    "@contributors": {
+    "thanks_for_contributing": "Thanks for contributing!",
+    "contributors_label": "彼らはアプリを構築中です",
+    "@contributors_label": {
         "description": "Button label: Opens a pop up window where all contributors of this app are shown"
     },
-    "contributors": "貢献者",
+    "contributors_dialog_title": "貢献者",
+    "@contributors_dialog_title": {
+        "description": "Dialog title: A list of all contributors of this app"
+    },
+    "contributors_dialog_entry_description": "貢献者: {name}",
+    "@contributors_dialog_entry_description": {
+        "description": "The user id of the contributor.",
+        "placeholders": {
+            "name": {}
+        }
+    },
+    "contributors_description": "このアプリのすべての貢献者のリスト",
+    "@contributors_description": {
+        "description": "Button description for accessibility purposes to explain what the Contributors button do"
+    },
     "support": "Support",
     "@support": {
         "description": "Button label: Opens a pop up window where all ways to get support are shown"
@@ -297,6 +323,10 @@
     "support_via_email_include_logs_dialog_body": "メールの添付ファイルにアプリのログを含めますか？",
     "termsOfUse": "利用規約",
     "@termsOfUse": {},
+    "legalNotices": "法的通知",
+    "@legalNotices": {
+        "description": "A link to open the legal notices on the website"
+    },
     "about_this_app": "このアプリについて",
     "@about_this_app": {
         "description": "Button label: Opens a pop up window which shows information about the app"
@@ -310,13 +340,13 @@
     "@contribute_sw_development": {
         "description": "Button label + page title: Ways to help"
     },
-    "contribute_develop_text": "すべてのOpenFood Facts製品のコードは、GitHubで入手できます。コード（オープンソース）を再利用して、世界中のすべての人のためにコードを改善するのを手伝ってください。",
+    "contribute_develop_text": "The code for every Open Food Facts product is available on GitHub. You are welcome to reuse the code (it's open source) and help us improve it, for everyone, on all the planet.",
     "@contribute_develop_text": {},
-    "contribute_develop_text_2": "質問がある場合はOpen Food FactsのSlackチャットで聞いてみましょう。",
+    "contribute_develop_text_2": "You can join the Open Food Facts Slack chatroom which is the preferred way to ask questions.",
     "@contribute_develop_text_2": {},
     "contribute_develop_dev_mode_title": "開発者モード？",
     "contribute_develop_dev_mode_subtitle": "開発者モードを有効にする",
-    "contribute_donate_header": "Open Food Facts に寄付する",
+    "contribute_donate_header": "Donate to Open Food Facts",
     "@contribute_donate_header": {},
     "contribute_improve_ProductsToBeCompleted": "完了が必要な製品",
     "@contribute_improve_ProductsToBeCompleted": {
@@ -326,7 +356,7 @@
     "@contribute_improve_header": {
         "description": "Button label + page title: Ways to improve the database"
     },
-    "contribute_improve_text": "データベースはプロジェクトの核となるものです。簡単かつ迅速に支援することができます。スマホにモバイルアプリをダウンロードすれば、製品の追加や修正ができます。\n\nまた、Open Food Factsのウェブサイトにも多数の貢献をする方法があります。: ",
+    "contribute_improve_text": "The database is the core of the project. It's easy and very quick to help. You can download the mobile app for your phone, and start adding or improving products.\n\nOn the other hand, Open Food Facts website offers many ways to contribute: ",
     "@contribute_improve_text": {},
     "contribute_translate_header": "翻訳",
     "@contribute_translate_header": {
@@ -336,19 +366,28 @@
     "@contribute_translate_link_text": {
         "description": "Button label: Opens the Crowdin translation portal"
     },
-    "contribute_translate_text": "Open Food Factsは、160か国以上の製品を含むグローバルプロジェクトです。 Open Food Factsは数十の言語に翻訳されており、コンテンツは絶えず進化しています。",
+    "contribute_translate_text": "Open Food Facts is a global project, containing products from more than 160 countries. Open Food Facts is translated into dozens of languages, with constantly evolving content.",
     "@contribute_translate_text": {},
     "contribute_translate_text_2": "翻訳はプロジェクトの重要なタスクの1つです",
     "@contribute_translate_text_2": {},
-    "contribute_share_header": "Open Food Factsを友達と共有する",
+    "contribute_join_skill_pool": "スキルをオープンフードファクトに貢献しましょう。スキルプールに参加しましょう！",
+    "contribute_share_header": "Share Open Food Facts with your friends",
     "@contribute_share_header": {},
-    "contribute_share_content": "私が使っているアプリ、Open Food Factsについて教えたいと思います。このアプリでは、食品の健康と環境への影響についてのパーソナライズされた情報を得ることができます。パッケージのバーコードをスキャンすることで動作します。最後に、無料で、登録不要で、解読された製品の数を増やすこともできます。こちらが携帯電話でアプリを取得するためのリンクです：https://openfoodfacts.app",
+    "contribute_share_content": "I wanted to let you know about the app I've been using, Open Food Facts, which allows you to get the health and environmental impacts of your food, in a personalized way. It works by scanning the barcodes on the packaging. Finally it's free, does not require registration, and you can even help increase the number of products decyphered. Here's the link to get it for your phone: https://openfoodfacts.app",
     "@contribute_share_content": {
         "description": "Content that will be shared, don't forget to include the URL"
     },
     "tap_to_answer": "質問に答えるにはここをタップ",
     "@tap_to_answer": {
-        "description": "Button label shown on a product, clicking the button opens a card with unanswered product questions, users can answer these to contribute to Open food facts and gain rewards."
+        "description": "Button label shown on a product, clicking the button opens a card with unanswered product questions, users can answer these to contribute to Open Food Facts and gain rewards."
+    },
+    "tap_to_answer_hint": "Tap here to answer questions about this product",
+    "@tap_to_answer_hint": {
+        "description": "Hint for accessibility readers to answer Robotoff questions."
+    },
+    "robotoff_questions_loading_hint": "Please wait while questions about this product are loaded",
+    "@robotoff_questions_loading_hint": {
+        "description": "Hint for accessibility readers while Robotoff questions are loaded"
     },
     "saving_answer": "回答を保存しています",
     "@saving_answer": {
@@ -356,16 +395,19 @@
     },
     "contribute_to_get_rewards": "食品の透明性を向上させ、報酬を得ましょう。",
     "@contribute_to_get_rewards": {
-        "description": "Button description shown on a product, clicking the button opens a card with unanswered product questions, users can answer these to contribute to Open food facts and gain rewards."
+        "description": "Button description shown on a product, clicking the button opens a card with unanswered product questions, users can answer these to contribute to Open Food Facts and gain rewards."
     },
-    "question_sign_in_text": "Open Food Factsアカウントにサインインすることで、あなたの投稿に対する信用を得ることができます",
+    "question_sign_in_text": "Sign in to your Open Food Facts account to get credit for your contributions",
+    "question_yes_button_accessibility_value": "「はい」で回答",
+    "question_no_button_accessibility_value": "No で回答",
+    "question_skip_button_accessibility_value": "この質問をスキップ",
     "tap_to_edit_search": "タップして検索を編集",
     "@Personal preferences": {},
     "myPreferences": "好みの設定",
     "@myPreferences": {
         "description": "Page title: Page where the ranking preferences can be changed"
     },
-    "account_create_message": "アカウントを作成してOpen Food Factsコミュニティに参加することで、世界中の食品に関する知識を築く手助けをしましょう！",
+    "account_create_message": "Create your account and join the Open Food Facts community to help build food knowledge all over the world!",
     "@account_create_message": {
         "description": "The Message to be displayed if the user does not have an account and wants to contribute"
     },
@@ -374,12 +416,12 @@
         "description": "Join which is actually Signup"
     },
     "myPreferences_profile_title": "あなたのプロフィール",
-    "myPreferences_profile_subtitle": "Open Food Factsの投稿者アカウントを管理します。",
+    "myPreferences_profile_subtitle": "Manage your Open Food Facts contributor account.",
     "myPreferences_settings_title": "アプリ設定",
     "myPreferences_settings_subtitle": "ダークモード、アナリティクス…",
     "myPreferences_food_title": "食品の好み",
     "myPreferences_food_subtitle": "あなたにとって最も重要な食品に関する情報を選択してください。",
-    "myPreferences_food_comment": "あなたの好みに応じた食品のランク付けや、あなたが気になる情報の確認、好みとの適合性の概要の取得をするために、食品に関する情報のうち、あなたにとって何が最も重要かを選択してください。これらの食品の好みの情報はデバイスに保存されます。Open Food Factsの投稿者アカウントには関連付けられません。",
+    "myPreferences_food_comment": "Choose what information about food matters most to you, in order to rank food according to your preferences, see the information you care about first, and get a compatibility summary. Those food preferences stay on your device, and are not associated with your Open Food Facts contributor account if you have one.",
     "confirmResetPreferences": "食品の好みをリセットしますか？",
     "@confirmResetPreferences": {
         "description": "Pop up title: Reassuring if the food preferences should really be reset"
@@ -413,6 +455,10 @@
     "@history_navbar_label": {
         "description": "BottomNavigationBarLabel: For the history and compare mode"
     },
+    "list_navbar_label": "リスト",
+    "@list_navbar_label": {
+        "description": "BottomNavigationBarLabel: For the lists"
+    },
     "category": "カテゴリでフィルタ",
     "@category": {
         "description": "From a product list, there's a category filter: this is its title"
@@ -426,15 +472,19 @@
     "@filter": {
         "description": "A button that opens a menu where you can filter within categories. Juices => Apple juices/Orange juices"
     },
-    "scan": "スキャン",
+    "scan": "スキャン画面の製品",
     "@scan": {
-        "description": "Page title: List type: Scanned products"
+        "description": "Page title: List type: Products in the scan session"
+    },
+    "scan_history": "スキャン履歴",
+    "@scan_history": {
+        "description": "Page title: List type: Products in the whole scan history"
     },
     "search": "検索",
     "@search": {
         "description": "Hint text of a search text input field"
     },
-    "tab_for_more": "詳細情報を表示するにはタップしてください…",
+    "tap_for_more": "詳細情報を表示するにはタップしてください…",
     "@Product": {},
     "product": "製品",
     "@product": {},
@@ -479,7 +529,7 @@
     "@packaging_information_photo": {},
     "missing_product": "新しい製品を見つけました！",
     "@missing_product": {},
-    "add_product_take_photos": "パッケージの写真を撮って、この製品をOpenFoodFactsに追加します",
+    "add_product_take_photos": "Take photos of the packaging to add this product to Open Food Facts",
     "@add_product_take_photos": {},
     "add_product_take_photos_descriptive": "最初に何枚か画像を撮ってください。後でいつでも製品を完成させることができます。",
     "@add_product_take_photos_descriptive": {},
@@ -487,6 +537,18 @@
     "@add_product_information_button_label": {},
     "new_product": "新しい製品",
     "@new_product": {},
+    "new_product_dialog_title": "新しい製品を見つけました！",
+    "@new_product_dialog_title": {
+        "description": "Please keep it short, like 50 characters. Title of the dialog when the user searched for an unknown barcode."
+    },
+    "new_product_leave_message": "It looks like you didn't input anything. Do you really want to leave this page?",
+    "@new_product_leave_message": {
+        "description": "Alert dialog message when a user landed on the 'add new product' page, didn't input anything and tried to leave the page."
+    },
+    "new_product_dialog_description": "この製品を共通データベースに追加するには、パッケージの写真を撮ってください。",
+    "@new_product_dialog_description": {
+        "description": "Please keep it short, like less than 100 characters. Explanatory text of the dialog when the user searched for an unknown barcode."
+    },
     "front_packaging_photo_button_label": "製品の正面画像",
     "@front_packaging_photo_button_label": {},
     "confirm_front_packaging_photo_button_label": "製品の正面画像のアップロードを確認する",
@@ -495,19 +557,49 @@
     },
     "confirm_button_label": "確定",
     "send_image_button_label": "画像を送信",
-    "crop_page_action_saving": "Saving the image…",
+    "crop_page_action_saving": "画像を保存中…",
     "@crop_page_action_saving": {
         "description": "Action being performed on the crop page"
     },
-    "crop_page_action_cropping": "Cropping the image…",
+    "crop_page_action_cropping": "画像を加工中...",
     "@crop_page_action_cropping": {
         "description": "Action being performed on the crop page"
     },
-    "crop_page_action_local": "Saving a local version…",
+    "crop_page_action_local": "ローカルバージョンを保存しています…",
     "@crop_page_action_local": {
         "description": "Action being performed on the crop page"
     },
-    "crop_page_action_server": "Preparing a call to the server…",
+    "crop_page_action_local_failed_title": "… あなたの写真に何かが含まれています!",
+    "@crop_page_action_local_title": {
+        "description": "The save of the picture locally failed - error dialog message"
+    },
+    "crop_page_action_local_failed_message": "サーバーに送信する前に画像をローカルで処理することができません。後でもう一度試すか、問題が解決しない場合はcontact-usをお試しください。",
+    "@crop_page_action_local_message": {
+        "description": "The save of the picture locally failed - error dialog message"
+    },
+    "crop_page_too_small_image_title": "The image is too small!",
+    "@crop_page_too_small_image_title": {
+        "description": "Title of a dialog warning the user that the image is too small for upload"
+    },
+    "crop_page_too_small_image_message": "The minimum size in pixels for picture upload is {expectedMinWidth}x{expectedMinHeight}. The current picture is {actualWidth}x{actualHeight}.",
+    "@crop_page_too_small_image_message": {
+        "description": "Message of a dialog warning the user that the image is too small for upload",
+        "placeholders": {
+            "expectedMinWidth": {
+                "type": "int"
+            },
+            "expectedMinHeight": {
+                "type": "int"
+            },
+            "actualWidth": {
+                "type": "int"
+            },
+            "actualHeight": {
+                "type": "int"
+            }
+        }
+    },
+    "crop_page_action_server": "サーバーへの呼び出しを準備しています…",
     "@crop_page_action_server": {
         "description": "Action being performed on the crop page"
     },
@@ -515,7 +607,7 @@
     "ingredients_photo_title": "原材料の画像",
     "nutritional_facts_photo_title": "栄養成分表の画像",
     "recycling_photo_title": "リサイクル情報の画像",
-    "other_interesting_photo_title": "その他の興味深い画像",
+    "take_more_photo_title": "もっと写真を撮ります",
     "front_photo_uploaded": "正面の画像をアップロードしました",
     "@front_photo_uploaded": {},
     "ingredients_photo_button_label": "原材料の画像",
@@ -527,14 +619,42 @@
     "@nutritional_facts_photo_button_label": {},
     "nutritional_facts_input_button_label": "栄養成分表を入力する",
     "nutritional_facts_added": "栄養成分表が追加されました",
+    "categories_added": "カテゴリーが追加されました。",
+    "new_product_title_nutriscore": "ニュートリスコアを計算する",
+    "new_product_subtitle_nutriscore": "食品カテゴリと栄養価を満たして入手する",
+    "new_product_title_ecoscore": "エコスコアを計算する",
+    "new_product_subtitle_ecoscore": "少なくともカテゴリを入力して入手してください",
+    "new_product_additional_ecoscore": "原産地、パッケージングなどを使用してエコスコアの計算をより正確に",
+    "new_product_title_nova": "Compute the food processing level (NOVA)",
+    "new_product_subtitle_nova": "Get it by filling the food category and ingredients",
+    "new_product_desc_nova_unknown": "食品加工レベル不明",
+    "new_product_title_pictures": "写真を撮りましょう！",
+    "new_product_title_pictures_details": "Please take the following photos and the Open Food Facts engine can work out the rest!",
+    "new_product_title_misc": "そしていくつかの基本データ…",
+    "new_product_done_msg": "ご協力ありがとうございます。「{username}」！",
+    "@new_product_done_msg": {
+        "description": "Thank you message on the end of new product page, after finish adding a new product.",
+        "placeholders": {
+            "username": {
+                "type": "String",
+                "example": "Bob"
+            }
+        }
+    },
+    "new_product_done_msg_no_user": "ご協力ありがとうございました！",
+    "new_product_done_button_label": "完成した製品を探す",
+    "@new_product_done_button_label": {
+        "description": "Button at the end of new product page, that takes you to completed product"
+    },
+    "hey_incomplete_product_message": "今すぐタップして 3 つの質問に答えて、ニュートリ スコア、エコ スコア、およびウルトラ プロセッシング (NOVA) を計算してください。",
     "nutritional_facts_photo_uploaded": "栄養成分表の画像がアップロードされました",
     "@nutritional_facts_photo_uploaded": {},
     "recycling_photo_button_label": "リサイクル情報の画像",
     "@recycling_photo_button_label": {},
     "recycling_photo_uploaded": "リサイクル情報の画像がアップロードされました",
     "@recycling_photo_uploaded": {},
-    "other_interesting_photo_button_label": "その他の興味深い画像",
-    "@other_interesting_photo_button_label": {},
+    "take_more_photo_button_label": "もっと写真を撮ります",
+    "@take_more_photo_button_label": {},
     "other_photo_uploaded": "その他の画像がアップロードされました",
     "@other_photo_uploaded": {},
     "retake_photo_button_label": "撮り直し",
@@ -549,27 +669,27 @@
     "@uploading_image": {
         "description": "Message when a new picture is uploading to the server"
     },
-    "uploading_image_type_front": "Open Food Factsに正面の画像をアップロードしています",
+    "uploading_image_type_front": "Uploading front image to Open Food Facts",
     "@uploading_image_type_front": {
         "description": "Message when a new front picture is being uploaded to the server"
     },
-    "uploading_image_type_ingredients": "Open Food Factsに原材料の画像をアップロードしています",
+    "uploading_image_type_ingredients": "Uploading ingredients image to Open Food Facts",
     "@uploading_image_type_ingredients": {
         "description": "Message when a new ingredients picture is being uploaded to the server"
     },
-    "uploading_image_type_nutrition": "Open Food Factsに栄養成分の画像をアップロードしています",
+    "uploading_image_type_nutrition": "Uploading nutrition image to Open Food Facts",
     "@uploading_image_type_nutrition": {
         "description": "Message when a new nutrition picture is being uploaded to the server"
     },
-    "uploading_image_type_packaging": "Open Food Factsにパッケージの画像をアップロードしています",
+    "uploading_image_type_packaging": "Uploading packaging image to Open Food Facts",
     "@uploading_image_type_packaging": {
         "description": "Message when a new packaging picture is being uploaded to the server"
     },
-    "uploading_image_type_other": "Open Food Factsにその他の画像をアップロードしています",
+    "uploading_image_type_other": "Uploading other image to Open Food Facts",
     "@uploading_image_type_other": {
         "description": "Message when a new other picture is being uploaded to the server"
     },
-    "uploading_image_type_generic": "Open Food Factsに画像をアップロードしています",
+    "uploading_image_type_generic": "Uploading image to Open Food Facts",
     "@uploading_image_type_generic": {
         "description": "Message when a new picture is being uploaded to the server"
     },
@@ -607,18 +727,14 @@
     "@product_refreshed": {
         "description": "Confirmation, that the product data refresh is done"
     },
-    "deprecated_header": "非推奨バージョンのアプリを使用しています。",
-    "@deprecated_header": {
-        "description": "Confirmation, that the user can upgrade to new version of the app"
-    },
-    "click_here": "ここをクリックして下さい",
-    "@click_here": {
-        "description": "Confirmation click to download new version of the app"
-    },
-    "download_new_version": "新しいバージョンのアプリをダウンロードする",
-    "@download_new_version": {
-        "description": "Download new version of the app text"
-    },
+    "tagline_app_review": "アプリを気に入っていただけましたか？",
+    "tagline_app_review_button_positive": "大好きです！ 😍",
+    "tagline_app_review_button_negative": "そうでもないんですが...",
+    "tagline_app_review_button_later": "あとで",
+    "app_review_negative_modal_title": "このアプリを気に入っていますか？",
+    "app_review_negative_modal_text": "その理由を少し教えていただけますか?",
+    "app_review_negative_modal_positive_button": "そのとおり！",
+    "app_review_negative_modal_negative_button": "いいえ",
     "could_not_refresh": "製品を更新できませんでした",
     "@could_not_refresh": {
         "description": "The product data couldn't be refreshed"
@@ -661,7 +777,15 @@
     },
     "country_chooser_label": "国を選んでください",
     "@country_chooser_label": {
-        "description": "Label shown above a selector where the user can select their country"
+        "description": "Label shown above a selector where the user can select their country (in the preferences)"
+    },
+    "onboarding_country_chooser_label": "国を選択してください",
+    "@onboarding_country_chooser_label": {
+        "description": "The label shown above a selector where the user can select their country (in the onboarding)"
+    },
+    "country_chooser_label_from_settings": "あなたの国",
+    "@country_chooser_label_from_settings": {
+        "description": "Label to use in the settings to change the user country"
     },
     "country_selection_explanation": "一部の環境特性は場所固有です",
     "@country_label": {
@@ -675,13 +799,17 @@
     "@native_app_settings": {
         "description": "Native App Settings in app settings"
     },
-    "native_app_description": "Open Food Factsのシステム設定を開く",
+    "native_app_description": "Open systems settings for Open Food Facts",
     "@native_app_description": {
         "description": "Native App description in app settings"
     },
     "product_removed_history": "履歴から削除された製品",
     "@product_removed_history": {
         "description": "Product got removed from history"
+    },
+    "product_removed_list": "リストから削除された商品",
+    "@product_removed_list": {
+        "description": "Product got removed from list"
     },
     "product_could_not_remove": "製品を削除できませんでした",
     "@product_could_not_remove": {
@@ -690,10 +818,14 @@
     "@Lists": {},
     "no_prodcut_in_list": "このリストには製品がありません",
     "no_product_in_section": "このリストには製品がありません",
-    "recently_seen_products": "履歴",
+    "recently_seen_products": "閲覧されたすべての製品",
     "clear": "クリア",
     "@clear": {
-        "description": "Clears a product list"
+        "description": "Clears a product list (short label)"
+    },
+    "clear_long": "リストを空にする",
+    "@clear_long": {
+        "description": "Clears a product list (long label)"
     },
     "really_clear": "本当にこのリストを削除しますか？",
     "@Plural": {},
@@ -746,7 +878,7 @@
             "count": {}
         }
     },
-    "compare_products_mode": "Compare",
+    "compare_products_mode": "Compare products",
     "@compare_products_mode": {
         "description": "Button to switch to 'compare products mode'"
     },
@@ -760,9 +892,9 @@
     },
     "retry_button_label": "再試行",
     "connect_with_us": "私たちとつながる",
-    "instagram": "Instagram",
+    "instagram": "Instagram でフォロー",
     "instagram_link": "https://instagram.com/open.food.facts",
-    "twitter": "Twitter",
+    "twitter": "X (旧 Twitter) でフォローしてください",
     "twitter_link": "https://www.twitter.com/openfoodfacts",
     "blog": "ブログ",
     "faq": "FAQ",
@@ -776,7 +908,7 @@
     "@consent_analytics_title": {
         "description": "Title for the consent analytics UI Page"
     },
-    "consent_analytics_body1": "Open Food Factsのボランティアがアプリを改善するのを手伝ってください。匿名の分析を提供するかどうか決定します。",
+    "consent_analytics_body1": "Help the Open Food Facts volunteers to improve the app. You decide whether to submit anonymous analytics.",
     "@conset_analytics_body1": {
         "description": "first paragraph for the consent analytics UI Page"
     },
@@ -915,7 +1047,7 @@
     "@product_list_icon_desc": {
         "description": "When the history list is empty, icon description (for accessibility) of the message explaining to start scanning"
     },
-    "product_list_empty_title": "スキャン開始！",
+    "product_list_empty_title": "スキャン開始",
     "@product_list_empty_title": {
         "description": "When the history list is empty, title of the message explaining to start scanning"
     },
@@ -961,8 +1093,8 @@
     "@user_profile_title_guest": {
         "description": "When the user is not connected"
     },
-    "user_profile_subtitle_guest": "サインインまたはサインアップしてOpen Food Factsコミュニティに参加する",
-    "user_profile_title_id_email": "Open Food Factsログイン： {email}",
+    "user_profile_subtitle_guest": "Sign-in or sign-up to join the Open Food Facts community",
+    "user_profile_title_id_email": "Open Food Facts login: {email}",
     "@user_profile_title_id_email": {
         "description": "User login (when it's an email)",
         "placeholders": {
@@ -984,7 +1116,7 @@
     "@email_subject_account_deletion": {
         "description": "Email subject for an account deletion"
     },
-    "email_body_account_deletion": "こんにちは。私のOpen Food Factsアカウントを削除してください：{userId}",
+    "email_body_account_deletion": "Hi there, please delete my Open Food Facts account: {userId}",
     "@email_body_account_deletion": {
         "description": "Email body for an account deletion",
         "placeholders": {
@@ -1009,21 +1141,6 @@
     "@camera_play_sound_subtitle": {
         "description": "SubTitle for the Camera play sound toggle"
     },
-    "camera_mode_title": "スキャナーモード",
-    "@camera_mode_title": {
-        "description": "Title for the mode for the camera/scanner"
-    },
-    "camera_mode_subtitle": "スキャナーだと問題がある（バーコードを読み取れない）場合にのみ、この値を変更してください。タップして2つのモードを切り替えます。\n現在のモード： {mode}",
-    "@camera_mode_subtitle": {
-        "description": "SubTitle for the mode for the camera/scanner",
-        "placeholders": {
-            "mode": {
-                "type": "String"
-            }
-        }
-    },
-    "camera_mode_file_based": "セーフモード (デフォルト)",
-    "camera_mode_bytes_array_based": "クイックモード",
     "app_haptic_feedback_title": "振動と触覚フィードバック",
     "@app_haptic_feedback_title": {
         "description": "Title for the Haptic feedback toggle"
@@ -1036,7 +1153,7 @@
     "@crash_reporting_toggle_title": {
         "description": "Title for the Crash reporting toggle"
     },
-    "crash_reporting_toggle_subtitle": "有効にすると、バグ修正をしてアプリを改善するため、Open Food Factsのエラー探知システムにクラッシュレポートが自動的に送信されます。",
+    "crash_reporting_toggle_subtitle": "When enabled, crash reports are automatically submitted to Open Food Facts' error tracking system, so that bugs can be fixed and thus improve the app.",
     "@crash_reporting_toggle_subtitle": {
         "description": "SubTitle for the Crash reporting toggle"
     },
@@ -1044,7 +1161,7 @@
     "@send_anonymous_toggle_title": {
         "description": "Title for the Send anonymous data toggle"
     },
-    "send_anonymous_data_toggle_subtitle": "When enabled, some anonymous information regarding app usage will be sent to the Open Food Facts servers, so that we can understand how and how much features are used in order to improve them.",
+    "send_anonymous_data_toggle_subtitle": "When enabled, some anonymous information regarding app usage will be sent to the Open Food Facts servers, so that we can understand how and how much features are used in order to improve them.",
     "@send_anonymous_toggle_subtitle": {
         "description": "SubTitle for the Send anonymous data toggle"
     },
@@ -1086,6 +1203,15 @@
     "@edit_product_label": {
         "description": "Edit product button label"
     },
+    "edit_product_form_item_add_action": "Add a new {itemType}",
+    "description": "Tooltip to show when the user long presses the (+) button",
+    "@edit_product_form_item_add_action": {
+        "placeholders": {
+            "itemType": {
+                "type": "String"
+            }
+        }
+    },
     "edit_product_form_item_barcode": "バーコード",
     "@edit_product_form_item_barcode": {
         "description": "Product edition - Barcode"
@@ -1126,6 +1252,10 @@
     "@edit_product_form_item_labels_hint": {
         "description": "Product edition - Labels - input textfield hint"
     },
+    "edit_product_form_item_labels_type": "ラベル",
+    "@edit_product_form_item_labels_type": {
+        "description": "Product edition - Labels - input textfield label"
+    },
     "edit_product_form_item_stores_title": "店舗",
     "@edit_product_form_item_stores_title": {
         "description": "Product edition - Stores - Title"
@@ -1134,13 +1264,21 @@
     "@edit_product_form_item_stores_hint": {
         "description": "Product edition - Stores - input textfield hint"
     },
+    "edit_product_form_item_stores_type": "店舗",
+    "@edit_product_form_item_stores_type": {
+        "description": "Product edition - Stores - input textfield type"
+    },
     "edit_product_form_item_origins_title": "原産国",
     "@edit_product_form_item_origins_title": {
         "description": "Product edition - Origins - Title"
     },
-    "edit_product_form_item_origins_hint": "スペイン",
+    "edit_product_form_item_origins_hint": "原点を入力してください",
     "@edit_product_form_item_origins_hint": {
         "description": "Product edition - Origins - input textfield hint"
+    },
+    "edit_product_form_item_origins_type": "国",
+    "@edit_product_form_item_origins_type": {
+        "description": "Product edition - Origins - input textfield type"
     },
     "edit_product_form_item_origins_explainer_1": "パッケージに記載されている原産地の情報を追加してください。原材料一覧に記載されている原産地については追加不要です。",
     "@edit_product_form_item_origins_explainer_1": {
@@ -1154,9 +1292,13 @@
     "@edit_product_form_item_countries_title": {
         "description": "Product edition - Countries - Title"
     },
-    "edit_product_form_item_countries_hint": "スペイン",
+    "edit_product_form_item_countries_hint": "国を入力してください",
     "@edit_product_form_item_countries_hint": {
         "description": "Product edition - Countries - input textfield hint"
+    },
+    "edit_product_form_item_countries_type": "国",
+    "@edit_product_form_item_countries_type": {
+        "description": "Product edition - Countries - input textfield type"
     },
     "edit_product_form_item_countries_explanations": "製品が広く入手できる国（外国製品を専門とする店を除く）。",
     "@edit_product_form_item_countries_explanations": {
@@ -1170,6 +1312,10 @@
     "@edit_product_form_item_emb_codes_hint": {
         "description": "Product edition - Traceability Codes - input textfield hint"
     },
+    "edit_product_form_item_emb_codes_type": "トレーサビリティコード",
+    "@edit_product_form_item_emb_codes_type": {
+        "description": "Product edition - Traceability Codes - input textfield type"
+    },
     "edit_product_form_item_emb_codes_explanations": "ヨーロッパでは、楕円で囲まれた、国の頭文字2桁に数字とCEが続くコードです。\n例：EMB 53062, FR 62.448.034 CE, 84 R 20, 33 RECOLTANT 522",
     "@edit_product_form_item_emb_codes_examples": {
         "description": "Product edition - EMB Codes - explanations"
@@ -1182,11 +1328,15 @@
     "@edit_product_form_item_categories_hint": {
         "description": "Product edition - Categories - input textfield hint"
     },
+    "edit_product_form_item_categories_type": "カテゴリー",
+    "@edit_product_form_item_categories_type": {
+        "description": "Product edition - Categories - input textfield type"
+    },
     "edit_product_form_item_categories_explainer_1": "最も具体的なカテゴリのみを指定してください。親カテゴリは自動的に追加されます。",
     "@edit_product_form_item_categories_explainer_1": {
         "description": "Product edition - Categories - input explainer, part 1"
     },
-    "edit_product_form_item_categories_explainer_2": "カテゴリがオートコンプリートに存在しない場合でも、自由に追加してください。あなたの国のOpen Food Factsを改善するのに役立ちます。",
+    "edit_product_form_item_categories_explainer_2": "In case a category is not available in autocomplete, feel free to add it anyway, that will help us improve Open Food Facts in your country.",
     "@edit_product_form_item_categories_explainer_2": {
         "description": "Product edition - Categories - input explainer, part 2"
     },
@@ -1197,9 +1347,9 @@
     "edit_product_form_item_exit_confirmation": "ページを離れる前に変更を保存しますか？",
     "edit_product_form_item_exit_confirmation_positive_button": "変更を保存",
     "edit_product_form_item_exit_confirmation_negative_button": "変更を破棄",
-    "edit_product_form_item_ingredients_title": "原材料と原産地",
+    "edit_product_form_item_ingredients_title": "原材料",
     "@edit_product_form_item_ingredients_title": {
-        "description": "Product edition - Ingredients - Title"
+        "description": "Product edition - Ingredients - Title (note: this section was previously called Ingredients & Origins)"
     },
     "edit_product_form_item_add_valid_item_tooltip": "追加",
     "edit_product_form_item_add_invalid_item_tooltip": "まずは文字を入力してください",
@@ -1219,6 +1369,10 @@
     "edit_product_form_save": "編集",
     "@edit_product_form_save": {
         "description": "Product edition - Nutrition facts - Save button"
+    },
+    "no_data_available": "利用可能なデータがありません。",
+    "@no_data_available": {
+        "description": "When there are no data to display"
     },
     "product_field_website_title": "ウェブサイト",
     "@product_field_website_title": {
@@ -1267,7 +1421,7 @@
     "@user_list_button_new": {
         "description": "Short label of a 'create a new list' button"
     },
-    "user_list_empty_label": "まだリストがありません\nリストの新規作成から始めてください",
+    "user_list_empty_label": "まだリストがありません。リストを作成してください。",
     "@user_list_empty_label": {
         "description": "Content displayed when there is no list"
     },
@@ -1279,9 +1433,9 @@
     "@added_to_list_msg": {
         "description": "Message when products have been successfully added to a list"
     },
-    "user_list_popup_clear": "クリア",
+    "user_list_popup_clear": "Clear your history",
     "@user_list_popup_clear": {
-        "description": "Short label of a 'clear list' popup"
+        "description": "Short label of a 'clear your history list' popup"
     },
     "user_list_popup_rename": "名前を変更",
     "@user_list_popup_rename": {
@@ -1320,6 +1474,14 @@
             }
         }
     },
+    "camera_toggle_camera": "前面カメラと背面カメラを切り替える",
+    "@camera_toggle_camera": {
+        "description": "Explanation for the icon to switch between cameras"
+    },
+    "camera_toggle_flash": "カメラのフラッシュをONまたはOFFにする",
+    "@camera_toggle_flash": {
+        "description": "Explanation for the icon to turn on/off the flash"
+    },
     "camera_enable_flash": "フラッシュを有効にする",
     "@camera_enable_flash": {
         "description": "Enable flash (tooltip)"
@@ -1339,6 +1501,10 @@
     "category_picker_no_category_found_button": "戻る",
     "@category_picker_no_category_found_button": {
         "description": "Button label when no category is available"
+    },
+    "user_preferences_item_accessibility_hint": "クリックしてブラウザまたはアプリケーションで開く（インストールされている場合）",
+    "@user_preferences_item_accessibility_hint": {
+        "description": "A hint for screen readers to explain how external links work"
     },
     "dev_preferences_screen_title": "開発者モード",
     "@dev_preferences_screen_title": {
@@ -1409,7 +1575,7 @@
     "@dev_preferences_export_history_dialog_title": {
         "description": "User dev preferences - Export history - Dialog title"
     },
-    "dev_preferences_button_positive": "Ok",
+    "dev_preferences_button_positive": "OK",
     "@dev_preferences_button_positive": {
         "description": "User dev preferences - Positive button label"
     },
@@ -1432,10 +1598,6 @@
     "dev_preferences_migration_status_in_progress": "進行中",
     "dev_preferences_migration_status_required": "必要（クリックしてスタート）",
     "dev_preferences_migration_status_not_started": "不明",
-    "dev_preferences_import_history_title": "履歴のインポート",
-    "@dev_preferences_import_history_title": {
-        "description": "User dev preferences - Import history - Title"
-    },
     "dev_preferences_import_history_subtitle": "履歴をクリアし、3つの製品を追加します",
     "@dev_preferences_import_history_subtitle": {
         "description": "User dev preferences - Import history - Subtitle"
@@ -1485,6 +1647,10 @@
     "@dev_mode_scan_scan_half_image": {
         "description": "Scan mode - Scan half image"
     },
+    "search_history_item_edit_tooltip": "この検索を再利用して編集する",
+    "@search_history_item_edit_tooltip": {
+        "description": "A tooltip to explain the Pen button near a search term -> it allows to reuse the item"
+    },
     "product_search_no_more_results": "{totalSize} 製品をすべてダウンロードしました。",
     "@product_search_no_more_results": {
         "description": "Product search list - No more results available",
@@ -1507,6 +1673,13 @@
             "totalSize": {
                 "type": "int"
             }
+        }
+    },
+    "product_search_loading_message": "Your search of {search} is in progress.\n\nPlease wait a few seconds…",
+    "@product_search_loading_message": {
+        "description": "This message will be displayed when a search is in progress.",
+        "search": {
+            "type": "String"
         }
     },
     "user_search_contributor_title": "自分が追加した製品",
@@ -1541,7 +1714,7 @@
     "@edit_product_action_confirm": {
         "description": "Product edition - FAB actions - confirm"
     },
-    "signup_page_terms_of_use_line1": "Open Food Factsの規約に同意します ",
+    "signup_page_terms_of_use_line1": "I agree to the Open Food Facts ",
     "@signup_page_terms_of_use_line1": {
         "description": "User consent for terms of use (line 1)"
     },
@@ -1633,10 +1806,17 @@
     "@basic_details_add_error": {
         "description": "Error message when error occurs while submitting basic details"
     },
+    "clear_search": "検索を消去",
+    "@confirm_clearclear_search": {
+        "description": "Tooltip to explain that the X button clears the content of the search"
+    },
     "confirm_clear": "すべての履歴をクリアしようとしています。続けますか？",
     "@confirm_clear": {
         "description": "Asking about whether to clear the history list or not"
     },
+    "alert_clear_selected_user_list": "選択したアイテムを履歴から消去しようとしています",
+    "confirm_clear_selected_user_list": "本当に続行しますか？",
+    "alert_select_items_to_clear": "削除する項目を 1 つ以上選択してください",
     "confirm_clear_user_list": "リスト({name}) をクリアしようとしています。続けますか？",
     "@confirm_clear_user_list": {
         "description": "Asking about whether to clear the list or not",
@@ -1646,14 +1826,22 @@
             }
         }
     },
-    "confirm_delete_user_list": "リスト({name}) を削除しようとしています。続けますか？",
-    "@confirm_delete_user_list": {
-        "description": "Asking about whether to delete the list or not",
+    "confirm_delete_user_list_title": "Delete the list?",
+    "@confirm_delete_user_list_title": {
+        "description": "Title when asking about whether to delete the list or not"
+    },
+    "confirm_delete_user_list_message": "You're about to delete the list \"{name}\".\nAre you sure you want to continue?",
+    "@confirm_delete_user_list_message": {
+        "description": "Message when asking about whether to delete the list or not",
         "placeholders": {
             "name": {
                 "type": "String"
             }
         }
+    },
+    "confirm_delete_user_list_button": "Yes, I confirm",
+    "@confirm_delete_user_list_button": {
+        "description": "Button to delete a list"
     },
     "importance_label": "{name} の重要度: {id}",
     "@importance_label": {
@@ -1674,6 +1862,10 @@
     "user_list_all_empty": "最初のリストを作成",
     "@user_list_all_empty": {
         "description": "Small message when there are no user lists"
+    },
+    "product_list_select": "リストを選択",
+    "@product_list_select": {
+        "description": "Top title for the selection of a list"
     },
     "user_list_length": "{count,plural, =0{空のリスト} =1{1 製品} other{{count} 製品}}",
     "@user_list_length": {
@@ -1710,11 +1902,23 @@
     "@gallery_source_label": {
         "description": "Label for the gallery image source"
     },
+    "gallery_source_access_denied_dialog_title": "アクセス拒否",
+    "@gallery_source_access_denied_dialog_title": {
+        "description": "On iOS, the user has refused to give the permission (title of the dialog)"
+    },
+    "gallery_source_access_denied_dialog_message_ios": "残念ながら、以前に許可を拒否されたため、アプリケーションはギャラリーにアクセスできません。\n\n携帯電話の [設定] -> [写真] のアプリ設定に移動してください。",
+    "@gallery_source_access_denied_dialog_message_ios": {
+        "description": "On iOS, the user has refused to give the permission"
+    },
+    "gallery_source_access_denied_dialog_button": "設定を開く",
+    "@gallery_source_access_denied_dialog_button": {
+        "description": "Button to open the app settings"
+    },
     "share": "共有",
     "@share": {
         "description": "Button label for sharing something on another app. For example sharing the link to a product via Email"
     },
-    "share_product_text": "Open Food Facts でこの製品を見る: {url}",
+    "share_product_text": "Have a look at this product on Open Food Facts: {url}",
     "@share_product_text": {
         "description": "The content which is send, when sharing a product",
         "placeholders": {
@@ -1723,7 +1927,7 @@
             }
         }
     },
-    "share_product_list_text": "Open Food Factsで私の製品リストを見てください：{url}",
+    "share_product_list_text": "Have a look at my list of products on Open Food Facts: {url}",
     "@share_product_list_text": {
         "description": "The content which is send, when sharing a product list",
         "placeholders": {
@@ -1743,6 +1947,14 @@
     "image_upload_queued": "画像はできるだけ早くpc上の背景にてアップロードされます。",
     "@image_upload_queued": {
         "description": "Message when a photo is queued for upload"
+    },
+    "background_task_title_full_refresh": "ローカルに保存されているすべての製品の更新を開始します",
+    "@background_task_title_full_refresh": {
+        "description": "Snackbar message when a full refresh is started"
+    },
+    "background_task_title_top_n": "最も人気のある製品のダウンロードを開始します",
+    "@background_task_title_top_n": {
+        "description": "Snackbar message when a download of the most popular products is started"
     },
     "expand_nutrition_facts": "栄養成分表を広げる",
     "@expand_nutrition_facts": {
@@ -1781,8 +1993,8 @@
         }
     },
     "clipboard_barcode_copied": "バーコード {barcode} がクリップボードにコピーされました！",
-    "choose_app_language": "アプリの言語の選択",
-    "@choose_app_language": {
+    "language_picker_label": "あなたの言語",
+    "@language_picker_label": {
         "description": "Choose Application Language"
     },
     "help_with_openfoodfacts": "OpenFoodFactsのヘルプ",
@@ -1807,9 +2019,71 @@
     "@product_card_remove_product_tooltip": {
         "description": "Tooltip (message visible with a long-press) on a product item in the carousel"
     },
+    "scan_announce_new_barcode": "新しいバーコードがスキャンされました: {barcode}",
+    "@scan_announce_new_barcode": {
+        "description": "Text to pronounce by the Accessibility tool when a new barcode is decoded",
+        "placeholders": {
+            "barcode": {
+                "type": "String",
+                "description": "barcode"
+            }
+        }
+    },
+    "scan_header_clear_button_tooltip": "Remove all products from the carousel",
+    "@scan_header_clear_button_tooltip": {
+        "description": "Tooltip (message visible with a long-press) on the Clear button on top of the scanner"
+    },
+    "scan_header_compare_button_invalid_state_tooltip": "Please scan at least two products to compare them",
+    "@scan_header_compare_button_invalid_state_tooltip": {
+        "description": "Tooltip (message visible with a long-press) on the Compare button on top of the scanner, when there is just one product scanned"
+    },
+    "scan_header_compare_button_valid_state_tooltip": "Click to compare the products you have scanned",
+    "@scan_header_compare_button_valid_state_tooltip": {
+        "description": "Tooltip (message visible with a long-press) on the Compare button on top of the scanner, when there is at least two prodiucts"
+    },
+    "scan_product_loading": "バーコード\nスキャンしました:",
+    "@scan_product_loading": {
+        "description": "Title when a product is loading (carousel card). Please ensure to keep the line break."
+    },
+    "scan_product_loading_initial": "この商品を探しています！\n数秒お待ちください…",
+    "@scan_product_loading_initial": {
+        "description": "Message when a product is loading (carousel card). Please ensure to keep the line break."
+    },
+    "scan_product_loading_long_request": "この商品はまだまだ募集中です！\n読み込みに時間がかかると思いますか? 私たちもそうです…",
+    "@scan_product_loading_long_request": {
+        "description": "Message when a product is long to load (carousel card). Please ensure to keep the line break."
+    },
+    "scan_product_loading_unresponsive": "We're still looking for this product.\nWould you like to restart the search?",
+    "@scan_product_loading_unresponsive": {
+        "description": "Message when a product is too long to load (carousel card). Please ensure to keep the line break."
+    },
+    "scan_product_loading_restart_button": "Restart search",
+    "@scan_product_loading_restart_button": {
+        "description": "Button to force restart a product search"
+    },
     "portion_calculator_description": "Calculate nutrition facts for a specific quantity",
     "@portion_calculator_description": {
         "description": "Sort of title that describes the portion calculator."
+    },
+    "portion_calculator_hint": "数量",
+    "@portion_calculator_hint": {
+        "description": "Hint to show when a quantity is empty in the portion calculator."
+    },
+    "portion_calculator_accessibility": "数量を入力して栄養成分を計算します",
+    "@portion_calculator_accessibility": {
+        "description": "Hint for the acessibility to explain to enter a quantity."
+    },
+    "portion_calculator_error": "{min} ～ {max} の間で数量を入力してください",
+    "@portion_calculator_error": {
+        "description": "Error message to explain that the quantity is invalid.",
+        "placeholders": {
+            "min": {
+                "type": "int"
+            },
+            "max": {
+                "type": "int"
+            }
+        }
     },
     "portion_calculator_result_title": "{grams} g (または ml) の栄養成分表",
     "@portion_calculator_result_title": {
@@ -1860,14 +2134,22 @@
     "@robotoff_continue": {
         "description": "Shown when robotoff question are all answered and user wants to continue answering"
     },
+    "robotoff_next_n_questions": "次 {count,plural,  =1{質問} other{{count} 質問}}",
+    "@robotoff_next_n_questions": {
+        "description": "Shown when robotoff question are all answered and user wants to continue answering",
+        "placeholders": {
+            "count": {}
+        }
+    },
     "show_password": "パスワードを表示",
     "@show_password": {
         "description": "Show hidden password in password field"
     },
+    "rate_app": "アプリを評価する",
     "app_rating_dialog_title": "Great! Let others know what you think of this app!",
     "app_rating_dialog_positive_action": "アプリを評価する",
     "app_rating_dialog_negative_action": "後で",
-    "app_rating_dialog_title_enjoying_app": "このアプリをお楽しみいただけていますか？",
+    "app_rating_dialog_title_enjoying_app": "このアプリを気に入っていますか？",
     "app_rating_dialog_title_enjoying_positive_actions": "はい！",
     "not_really": "いいえ",
     "app_rating_dialog_title_not_enjoying_app": "申し訳ございません。何があったのか教えていただけますか？",
@@ -1952,6 +2234,7 @@
     "background_task_title": "保留中の投稿",
     "background_task_subtitle": "あなたの投稿は自動的にサーバーに保存されますが、リアルタイムで保存されるとは限りません。",
     "background_task_list_empty": "保留中のバックグラウンドタスクはありません",
+    "background_task_error_server_time_out": "サーバータイムアウト",
     "background_task_error_no_internet": "インターネット接続エラーが発生しました。後でお試しください。",
     "background_task_operation_unknown": "不明な操作タイプ",
     "background_task_operation_details": "詳細な変更",
@@ -1991,7 +2274,7 @@
     },
     "color_light_brown": "デフォルト",
     "@color_light_brown": {
-        "description": "Color Light Brown, Default Open Food Facts Color"
+        "description": "Color Light Brown, Default Open Food Facts Color"
     },
     "color_magenta": "マゼンタ",
     "@color_magenta": {
@@ -2032,5 +2315,204 @@
     "contrast_low": "低",
     "@contrast_low": {
         "description": "Low Contrast Text Color"
+    },
+    "product_refresher_internet_not_found": "商品が見つかりませんでした",
+    "@product_refresher_internet_not_found": {
+        "description": "When refreshing a product that does not exist on the server. Label is the body of a dialog."
+    },
+    "product_refresher_internet_not_connected": "インターネットに接続されていません。",
+    "@product_refresher_internet_not_connected": {
+        "description": "When refreshing a product and you're not even connected to internet. Label is the body of a dialog."
+    },
+    "product_refresher_internet_no_ping": "サーバーダウン ({host})",
+    "@product_refresher_internet_no_ping": {
+        "description": "When refreshing a product and you cannot even ping the server. Label is the body of a dialog.",
+        "placeholders": {
+            "host": {
+                "type": "String?"
+            }
+        }
+    },
+    "product_refresher_internet_error": "サーバーエラー ({exception})",
+    "@product_refresher_internet_error": {
+        "description": "When refreshing a product and the server returned an exception. Label is the body of a dialog.",
+        "placeholders": {
+            "exception": {
+                "type": "String?"
+            }
+        }
+    },
+    "product_loader_not_found_title": "商品が見つかりませんでした",
+    "@product_loader_not_found_title": {
+        "description": "When fetching a product opened via a link and it doesn't exist"
+    },
+    "product_loader_not_found_message": "次のバーコードを持つ商品はデータベースに存在しません: {barcode}",
+    "@product_loader_not_found_message": {
+        "description": "When fetching a product opened via a link, it doesn't exist",
+        "placeholders": {
+            "barcode": {
+                "type": "String"
+            }
+        }
+    },
+    "product_loader_network_error_title": "インターネットに接続されていません",
+    "@product_loader_network_error_title": {
+        "description": "When fetching a product opened via a link and there is no connection"
+    },
+    "product_loader_network_error_message": "スマートフォンが WiFi ネットワークに接続されているか、モバイル データが有効になっていることを確認してください",
+    "@product_loader_network_error_message": {
+        "description": "When fetching a product opened via a link and there is no connection"
+    },
+    "page_not_found_title": "ページが見つかりません。",
+    "@page_not_found_title": {
+        "description": "Title for a page not found (when an URL is not recognized)"
+    },
+    "page_not_found_button": "ホームページへ戻る",
+    "@page_not_found_button": {
+        "description": "Button to go back to the homepage"
+    },
+    "download_data": "データをダウンロード",
+    "@download_data": {
+        "description": "App bar title for the download data page"
+    },
+    "download_top_products": "あなたの国の上位 1,000 製品をダウンロードして即時スキャンできます",
+    "@download_top_products": {
+        "description": "Download the top 1000 products in your country for instant scanning"
+    },
+    "download_top_n_products": "Download the top {count,plural,  other{{count} products}} in your country for instant scanning",
+    "@download_top_n_products": {
+        "placeholders": {
+            "count": {
+                "type": "int"
+            }
+        }
+    },
+    "download_in_progress": "データをダウンロード中\nしばらく時間がかかる場合があります",
+    "@download_in_progress": {
+        "description": "Download in progress"
+    },
+    "downloaded_products": "{num} 商品が追加されました",
+    "@downloaded_products": {
+        "description": "text to show when products added",
+        "placeholders": {
+            "num": {
+                "type": "int"
+            }
+        }
+    },
+    "update_offline_data": "オフラインデータを更新",
+    "@update_offline_data": {
+        "description": "List tile title for the update offline data page"
+    },
+    "update_local_database_sub": "Update the local product database with the latest data from Open Food Facts",
+    "@update_local_database_sub": {
+        "description": "Update the local product database with the latest data from server"
+    },
+    "clear_local_database": "オフライン商品データを消去",
+    "@clear_local_database": {
+        "description": "List tile title for the clear local database page"
+    },
+    "clear_local_database_sub": "アプリからすべてのローカル製品データを消去して空き容量を増やします",
+    "@clear_local_database_sub": {
+        "description": "Clear all local product data from your app to free up space"
+    },
+    "deleted_products": "{num} 商品が削除されました",
+    "@deleted_products": {
+        "description": "text to show when products are deleted from local databse",
+        "placeholders": {
+            "num": {
+                "type": "int"
+            }
+        }
+    },
+    "loading": "読み込んでいます…",
+    "@loading": {
+        "description": "Loading…"
+    },
+    "know_more": "詳しくはこちら",
+    "@know_more": {
+        "description": "Know More"
+    },
+    "offline_data_desc": "オフラインデータの詳細についてはクリックしてください",
+    "@offline_data_desc": {
+        "description": "Click to know more about offline data"
+    },
+    "offline_product_data_title": "オフラインの製品データ",
+    "@offline_product_data_title": {
+        "description": "Offline Product Data"
+    },
+    "available_for_download": "即時スキャン可能な製品は{num} 件あります",
+    "@available_for_download": {
+        "description": "text to show details of products available for download",
+        "placeholders": {
+            "num": {
+                "type": "int"
+            }
+        }
+    },
+    "country_selector_title": "国を選択してください",
+    "@country_selector_title": {
+        "description": "Label written as the title of the dialog to select the user country"
+    },
+    "language_selector_title": "言語を選択してください:",
+    "@language_selector_title": {
+        "description": "Label written as the title of the dialog to select the user language"
+    },
+    "action_delete_list": "削除",
+    "@action_delete_list": {
+        "description": "Delete a list action in a menu"
+    },
+    "action_change_list": "Change the current list",
+    "@action_change_list": {
+        "description": "Action to change the current visible list"
+    },
+    "product_list_create": "Create",
+    "@product_list_create": {
+        "description": "Button label to create a new list (short word)"
+    },
+    "product_list_create_tooltip": "Create a new list",
+    "@product_list_create_tooltip": {
+        "description": "Button description to create a new list (long sentence)"
+    },
+    "nutriscore_generic": "Nutri-Score",
+    "nutriscore_a": "Nutri-Score A",
+    "nutriscore_b": "Nutri-Score B",
+    "nutriscore_c": "Nutri-Score C",
+    "nutriscore_d": "Nutri-Score D",
+    "nutriscore_e": "Nutri-Score E",
+    "nutriscore_unknown": "Unknown Nutri-Score",
+    "nutriscore_not_applicable": "Nutri-Score is not applicable",
+    "ecoscore_generic": "Eco-Score",
+    "ecoscore_a": "Eco-Score A",
+    "ecoscore_b": "Eco-Score B",
+    "ecoscore_c": "Eco-Score C",
+    "ecoscore_d": "Eco-Score D",
+    "ecoscore_e": "Eco-Score E",
+    "ecoscore_unknown": "Unknown Eco-Score",
+    "ecoscore_not_applicable": "Eco-Score is not applicable",
+    "nova_group_generic": "超処理 - NOVA グループ",
+    "nova_group_1": "NOVA Group 1",
+    "nova_group_2": "NOVA Group 2",
+    "nova_group_3": "NOVA Group 3",
+    "nova_group_4": "NOVA Group 4",
+    "nova_group_unknown": "Unknown NOVA Group",
+    "nutrition_facts": "栄養レベル",
+    "faq_title_partners": "NGO のパートナーと後援者",
+    "faq_title_vision": "Open Food Facts ビジョン、使命、価値観、プログラム",
+    "faq_title_install_beauty": "Open Beauty Facts をインストールして化粧品データベースを作成する",
+    "faq_title_install_pet": "Open Pet Food Facts をインストールしてペットフード データベースを作成する",
+    "faq_title_install_product": "Open Products Facts をインストールして製品データベースを作成し、オブジェクトの寿命を延ばす",
+    "contact_title_pro_page": "プロ？ Open Food Facts に製品をインポートします",
+    "contact_title_pro_email": "プロデューサー連絡先",
+    "contact_title_press_page": "プレスページ",
+    "contact_title_press_email": "報道関係者向けのお問い合わせ先",
+    "contact_title_newsletter": "Subscribe to our newsletter",
+    "hunger_games_loading_line1": "数秒お待ちください…",
+    "hunger_games_loading_line2": "質問をダウンロード中です！",
+    "hunger_games_error_label": "ああ！問題が発生した… 、質問を読み込むことができませんでした。",
+    "hunger_games_error_retry_button": "再試行しましょう！",
+    "link_cant_be_opened": "このリンクは、お使いのデバイスでは開けません。ブラウザがインストールされていることを確認してください。",
+    "@link_cant_be_opened": {
+        "description": "An error may happen if the device doesn't have a browser installed."
     }
 }

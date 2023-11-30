@@ -31,7 +31,7 @@ class SmoothProductCardTemplate extends StatelessWidget {
     final Color backgroundColor = isDarkMode ? Colors.black : Colors.white;
     final double iconSize = IconWidgetSizer.getIconSizeFromContext(context);
     final Widget textWidget = Container(
-      width: screenSize.width * .4,
+      width: double.infinity,
       height: screenSize.width * .04,
       decoration: BoxDecoration(
         color: itemColor,
@@ -66,11 +66,13 @@ class SmoothProductCardTemplate extends StatelessWidget {
                 height: screenSize.width * 0.20,
                 color: itemColor,
               ),
-              const Padding(padding: EdgeInsets.only(left: VERY_SMALL_SPACE)),
+              const Padding(
+                  padding: EdgeInsetsDirectional.only(start: VERY_SMALL_SPACE)),
               Expanded(
                 child: SizedBox(
                   height: screenSize.width * 0.2,
                   child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       if (barcode == null)
@@ -80,21 +82,25 @@ class SmoothProductCardTemplate extends StatelessWidget {
                           barcode!,
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
-                      if (message == null) textWidget,
-                      if (message != null)
+                      if (message == null)
+                        textWidget
+                      else
                         Padding(
-                          padding: const EdgeInsets.only(top: SMALL_SPACE),
+                          padding: const EdgeInsetsDirectional.only(
+                              top: SMALL_SPACE),
                           child: AutoSizeText(
                             message!,
                             maxLines: 3,
                             minFontSize: 5,
                           ),
                         ),
+                      Opacity(opacity: 0, child: textWidget)
                     ],
                   ),
                 ),
               ),
-              const Padding(padding: EdgeInsets.only(left: VERY_SMALL_SPACE)),
+              const Padding(
+                  padding: EdgeInsetsDirectional.only(start: VERY_SMALL_SPACE)),
               Padding(
                 padding: const EdgeInsets.all(VERY_SMALL_SPACE),
                 child: actionButton == null

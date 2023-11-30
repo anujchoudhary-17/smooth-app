@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:openfoodfacts/openfoodfacts.dart';
 import 'package:provider/provider.dart';
+import 'package:smooth_app/data_models/preferences/user_preferences.dart';
 import 'package:smooth_app/data_models/product_preferences.dart';
-import 'package:smooth_app/data_models/user_preferences.dart';
 import 'package:smooth_app/generic_lib/design_constants.dart';
 import 'package:smooth_app/generic_lib/svg_icon_chip.dart';
 import 'package:smooth_app/generic_lib/widgets/smooth_card.dart';
@@ -56,25 +56,21 @@ class SmoothProductCardFound extends StatelessWidget {
     );
     final ProductCompatibilityHelper helper =
         ProductCompatibilityHelper.product(matchedProduct);
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: MEDIUM_SPACE,
-        vertical: SMALL_SPACE,
-      ),
-      child: InkWell(
-        borderRadius: ROUNDED_BORDER_RADIUS,
-        onTap: onTap ??
-            () {
-              AppNavigator.of(context).push(
-                AppRoutes.PRODUCT(product.barcode!),
+    final Widget child = InkWell(
+      borderRadius: ROUNDED_BORDER_RADIUS,
+      onTap: onTap ??
+          () => AppNavigator.of(context).push(
+                AppRoutes.PRODUCT(
+                  product.barcode!,
+                  heroTag: heroTag,
+                ),
                 extra: product,
-              );
-            },
-        onLongPress: () {
-          onLongPress?.call();
-        },
-        child: Hero(
-          tag: heroTag,
+              ),
+      onLongPress: () => onLongPress?.call(),
+      child: Hero(
+        tag: heroTag,
+        child: Material(
+          type: MaterialType.transparency,
           child: Ink(
             decoration: BoxDecoration(
               borderRadius: ROUNDED_BORDER_RADIUS,
@@ -93,8 +89,9 @@ class SmoothProductCardFound extends StatelessWidget {
                     height: screenSize.width * 0.20,
                   ),
                   const Padding(
-                      padding:
-                          EdgeInsetsDirectional.only(start: VERY_SMALL_SPACE)),
+                    padding:
+                        EdgeInsetsDirectional.only(start: VERY_SMALL_SPACE),
+                  ),
                   Expanded(
                     child: SizedBox(
                       height: screenSize.width * 0.2,
@@ -155,6 +152,14 @@ class SmoothProductCardFound extends StatelessWidget {
           ),
         ),
       ),
+    );
+    // TODO(monsieurtanuki): check localDatabase.upToDate.hasPendingChanges and display a "pending changes" mark if relevant
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: MEDIUM_SPACE,
+        vertical: SMALL_SPACE,
+      ),
+      child: child,
     );
   }
 }

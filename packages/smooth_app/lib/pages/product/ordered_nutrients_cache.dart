@@ -21,14 +21,19 @@ class OrderedNutrientsCache {
     final BuildContext context,
   ) async {
     final OrderedNutrientsCache cache = OrderedNutrientsCache._();
-    cache._orderedNutrients = await cache._get() ??
+    cache._orderedNutrients = await cache._get();
+    if (cache._orderedNutrients == null) {
+      if (context.mounted) {
         await LoadingDialog.run<OrderedNutrients>(
           context: context,
           future: cache._download(),
         );
+      }
+    }
     if (cache._orderedNutrients == null) {
-      // ignore: use_build_context_synchronously
-      await LoadingDialog.error(context: context);
+      if (context.mounted) {
+        await LoadingDialog.error(context: context);
+      }
       return null;
     }
     return cache;
@@ -52,8 +57,9 @@ class OrderedNutrientsCache {
   /// Downloads the ordered nutrients and caches them in the database.
   Future<OrderedNutrients> _download() async {
     final String string = await OpenFoodAPIClient.getOrderedNutrientsJsonString(
-      country: ProductQuery.getCountry()!,
+      country: ProductQuery.getCountry(),
       language: ProductQuery.getLanguage(),
+      uriHelper: ProductQuery.uriProductHelper,
     );
     final OrderedNutrients result = OrderedNutrients.fromJson(
       jsonDecode(string) as Map<String, dynamic>,
@@ -64,11 +70,11 @@ class OrderedNutrientsCache {
 
   /// Database key.
   String _getKey() {
-    final OpenFoodFactsCountry country = ProductQuery.getCountry()!;
+    final OpenFoodFactsCountry country = ProductQuery.getCountry();
     final OpenFoodFactsLanguage language = ProductQuery.getLanguage();
     return 'nutrients.pl'
         '/${country.offTag}'
         '/${language.code}'
-        '/${OpenFoodAPIConfiguration.globalQueryType}';
+        '/${ProductQuery.uriProductHelper.domain}';
   }
 }

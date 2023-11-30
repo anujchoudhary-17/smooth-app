@@ -3,9 +3,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:matomo_tracker/matomo_tracker.dart';
 import 'package:openfoodfacts/openfoodfacts.dart';
-import 'package:package_info_plus/package_info_plus.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
-import 'package:smooth_app/helpers/entry_points_helper.dart';
+import 'package:smooth_app/data_models/preferences/user_preferences.dart';
 import 'package:smooth_app/helpers/global_vars.dart';
 
 /// Category for Matomo Events
@@ -13,8 +12,12 @@ enum AnalyticsCategory {
   userManagement(tag: 'user management'),
   scanning(tag: 'scanning'),
   share(tag: 'share'),
+  loadingProduct(tag: 'loading product'),
   couldNotFindProduct(tag: 'could not find product'),
   productEdit(tag: 'product edit'),
+  productFastTrackEdit(tag: 'product fast track edit'),
+  newProduct(tag: 'new product'),
+  robotoff(tag: 'robotoff'),
   list(tag: 'list'),
   deepLink(tag: 'deep link');
 
@@ -38,16 +41,102 @@ enum AnalyticsEvent {
     tag: 'could not find product',
     category: AnalyticsCategory.couldNotFindProduct,
   ),
+  ignoreProductLoading(
+    tag: 'ignore product',
+    category: AnalyticsCategory.loadingProduct,
+  ),
+  restartProductLoading(
+    tag: 'restart request',
+    category: AnalyticsCategory.loadingProduct,
+  ),
+  ignoreProductNotFound(
+    tag: 'ignore product',
+    category: AnalyticsCategory.couldNotFindProduct,
+  ),
   openProductEditPage(
     tag: 'opened product edit page',
     category: AnalyticsCategory.productEdit,
   ),
-  shareList(tag: 'shared a list', category: AnalyticsCategory.list),
-  openListWeb(tag: 'open a list in wbe', category: AnalyticsCategory.list),
+  openFastTrackProductEditPage(
+    tag: 'opened fast-track product edit page',
+    category: AnalyticsCategory.productFastTrackEdit,
+  ),
+  showFastTrackProductEditCard(
+    tag: 'showed fast-track product edit card',
+    category: AnalyticsCategory.productFastTrackEdit,
+  ),
+  notShowFastTrackProductEditCardNutriscore(
+    tag: 'nutriscore not applicable - no fast-track product edit card',
+    category: AnalyticsCategory.productFastTrackEdit,
+  ),
+  notShowFastTrackProductEditCardEcoscore(
+    tag: 'ecoscore not applicable - no fast-track product edit card',
+    category: AnalyticsCategory.productFastTrackEdit,
+  ),
+  categoriesFastTrackProductPage(
+    tag: 'set categories on fast track product page',
+    category: AnalyticsCategory.productFastTrackEdit,
+  ),
+  nutritionFastTrackProductPage(
+    tag: 'set nutrition facts on fast track product page',
+    category: AnalyticsCategory.productFastTrackEdit,
+  ),
+  ingredientsFastTrackProductPage(
+    tag: 'set ingredients on fast track product page',
+    category: AnalyticsCategory.productFastTrackEdit,
+  ),
+  closeEmptyFastTrackProductPage(
+    tag: 'closed new product page without any input',
+    category: AnalyticsCategory.productFastTrackEdit,
+  ),
+  openNewProductPage(
+    tag: 'opened new product page',
+    category: AnalyticsCategory.newProduct,
+  ),
+  categoriesNewProductPage(
+    tag: 'set categories on new product page',
+    category: AnalyticsCategory.newProduct,
+  ),
+  nutritionNewProductPage(
+    tag: 'set nutrition facts on new product page',
+    category: AnalyticsCategory.newProduct,
+  ),
+  ingredientsNewProductPage(
+    tag: 'set ingredients on new product page',
+    category: AnalyticsCategory.newProduct,
+  ),
+  imagesNewProductPage(
+    tag: 'set at least one image on new product page',
+    category: AnalyticsCategory.newProduct,
+  ),
+  closeEmptyNewProductPage(
+    tag: 'closed new product page without any input',
+    category: AnalyticsCategory.newProduct,
+  ),
+  shareList(
+    tag: 'shared a list',
+    category: AnalyticsCategory.list,
+  ),
+  openListWeb(
+    tag: 'open a list in wbe',
+    category: AnalyticsCategory.list,
+  ),
   productDeepLink(
-      tag: 'open a product from an URL', category: AnalyticsCategory.deepLink),
+    tag: 'open a product from an URL',
+    category: AnalyticsCategory.deepLink,
+  ),
   genericDeepLink(
-      tag: 'generic deep link', category: AnalyticsCategory.deepLink);
+    tag: 'generic deep link',
+    category: AnalyticsCategory.deepLink,
+  ),
+  questionVisible(
+    tag: 'question visible',
+    category: AnalyticsCategory.robotoff,
+  ),
+  questionClicked(
+    tag: 'question clicked',
+    category: AnalyticsCategory.robotoff,
+  );
 
   const AnalyticsEvent({required this.tag, required this.category});
 
@@ -90,44 +179,72 @@ class AnalyticsHelper {
   AnalyticsHelper._();
 
   static bool _crashReports = false;
+  static _AnalyticsTrackingMode _analyticsReporting =
+      _AnalyticsTrackingMode.disabled;
 
   static String latestSearch = '';
 
-  /// Did the user allow the analytic reports?
-  static bool _allow = false;
+  static void linkPreferences(UserPreferences userPreferences) {
+    // Init the value
+    _setAnalyticsReports(userPreferences.onAnalyticsChanged.value);
+    _setCrashReports(userPreferences.onCrashReportingChanged.value);
+
+    // Listen to changes
+    userPreferences.onAnalyticsChanged.addListener(() {
+      _setAnalyticsReports(userPreferences.onAnalyticsChanged.value);
+    });
+
+    userPreferences.onCrashReportingChanged.addListener(() {
+      _setCrashReports(userPreferences.onCrashReportingChanged.value);
+    });
+  }
 
   static Future<void> initSentry({
     required Function()? appRunner,
   }) async {
-    final PackageInfo packageInfo = await PackageInfo.fromPlatform();
-
     await SentryFlutter.init(
       (SentryOptions options) {
-        options.dsn =
-            'https://22ec5d0489534b91ba455462d3736680@o241488.ingest.sentry.io/5376745';
-        options.sentryClientName =
-            'sentry.dart.smoothie/${packageInfo.version}';
+        options
+          ..dsn =
+              'https://22ec5d0489534b91ba455462d3736680@o241488.ingest.sentry.io/5376745'
+          ..beforeSend = (
+            SentryEvent event, {
+            Hint? hint,
+          }) async {
+            return event.copyWith(
+              tags: <String, String>{
+                'store': GlobalVars.storeLabel.name,
+                'scanner': GlobalVars.scannerLabel.name,
+              },
+            );
+          };
         // To set a uniform sample rate
-        options.tracesSampleRate = 1.0;
-        options.beforeSend = _beforeSend;
-        options.environment =
-            '${GlobalVars.storeLabel.name}-${GlobalVars.scannerLabel.name}';
+        options
+          ..tracesSampleRate = 1.0
+          ..beforeSend = _beforeSend
+          ..environment =
+              '${GlobalVars.storeLabel.name}-${GlobalVars.scannerLabel.name}';
       },
       appRunner: appRunner,
     );
   }
 
-  static void setCrashReports(final bool crashReports) =>
+  /// Don't call this method directly, it is automatically updated via the
+  /// [UserPreferences]
+  static void _setCrashReports(final bool crashReports) =>
       _crashReports = crashReports;
 
-  static Future<void> setAnalyticsReports(final bool allow) async {
-    _allow = allow;
-
-    // F-Droid special case
-    if (GlobalVars.storeLabel == StoreLabel.FDroid && !allow) {
-      await MatomoTracker.instance.setOptOut(optout: true);
+  /// Don't call this method directly, it is automatically updated via the
+  /// [UserPreferences]
+  static Future<void> _setAnalyticsReports(final bool allow) async {
+    if (allow) {
+      _analyticsReporting = _AnalyticsTrackingMode.enabled;
     } else {
-      await MatomoTracker.instance.setOptOut(optout: false);
+      _analyticsReporting = _AnalyticsTrackingMode.anonymous;
+    }
+
+    if (MatomoTracker.instance.initialized) {
+      MatomoTracker.instance.setVisitorUserId(_uuid);
     }
   }
 
@@ -143,15 +260,15 @@ class AnalyticsHelper {
     final bool screenshotMode,
   ) async {
     if (screenshotMode) {
-      setCrashReports(false);
-      setAnalyticsReports(false);
+      _setCrashReports(false);
+      _setAnalyticsReports(false);
       return;
     }
     try {
       await MatomoTracker.instance.initialize(
         url: 'https://analytics.openfoodfacts.org/matomo.php',
         siteId: 2,
-        visitorId: uuid,
+        visitorId: _uuid,
       );
     } catch (err) {
       // With Hot Reload, this may trigger a late field already initialized
@@ -159,15 +276,21 @@ class AnalyticsHelper {
   }
 
   /// A UUID must be at least one 16 characters
-  static String? get uuid {
+  static String? get _uuid {
     // if user opts out then track anonymously with userId containg zeros
     if (kDebugMode) {
       return 'smoothie_debug--';
     }
-    if (!_allow) {
-      return '0' * 16;
+
+    switch (_analyticsReporting) {
+      case _AnalyticsTrackingMode.anonymous:
+        return '0' * 16;
+      case _AnalyticsTrackingMode.disabled:
+        return '';
+      case _AnalyticsTrackingMode.enabled:
+      default:
+        return OpenFoodAPIConfiguration.uuid;
     }
-    return OpenFoodAPIConfiguration.uuid;
   }
 
   static void trackEvent(
@@ -176,10 +299,12 @@ class AnalyticsHelper {
     String? barcode,
   }) =>
       MatomoTracker.instance.trackEvent(
-        eventName: msg.name,
-        eventCategory: msg.category.tag,
-        action: msg.name,
-        eventValue: eventValue ?? _formatBarcode(barcode),
+        eventInfo: EventInfo(
+          name: msg.name,
+          category: msg.category.tag,
+          action: msg.name,
+          value: eventValue ?? _formatBarcode(barcode),
+        ),
       );
 
   // Used by code which is outside of the core:smooth_app code
@@ -191,20 +316,24 @@ class AnalyticsHelper {
     String? barcode,
   }) =>
       MatomoTracker.instance.trackEvent(
-        eventName: msg,
-        eventCategory: category,
-        action: msg,
-        eventValue: eventValue ?? _formatBarcode(barcode),
+        eventInfo: EventInfo(
+          name: msg,
+          category: category,
+          action: msg,
+          value: eventValue ?? _formatBarcode(barcode),
+        ),
       );
 
   static void trackProductEdit(
           AnalyticsEditEvents editEventName, String barcode,
           [bool saved = false]) =>
       MatomoTracker.instance.trackEvent(
-        eventName: saved ? '${editEventName.name}-saved' : editEventName.name,
-        eventCategory: AnalyticsCategory.productEdit.tag,
-        action: editEventName.name,
-        eventValue: _formatBarcode(barcode),
+        eventInfo: EventInfo(
+          name: saved ? '${editEventName.name}-saved' : editEventName.name,
+          category: AnalyticsCategory.productEdit.tag,
+          action: editEventName.name,
+          value: _formatBarcode(barcode),
+        ),
       );
 
   static void trackSearch({
@@ -228,7 +357,7 @@ class AnalyticsHelper {
   }
 
   static void trackOutlink({required String url}) =>
-      MatomoTracker.instance.trackOutlink(url);
+      MatomoTracker.instance.trackOutlink(link: url);
 
   static int? _formatBarcode(String? barcode) {
     if (barcode == null) {
@@ -242,4 +371,19 @@ class AnalyticsHelper {
       return fallback;
     }
   }
+
+  static void sendException(dynamic throwable, {dynamic stackTrace}) {
+    Sentry.captureException(throwable, stackTrace: stackTrace);
+  }
+
+  static String? get matomoVisitorId => MatomoTracker.instance.visitor.id;
+}
+
+enum _AnalyticsTrackingMode {
+  // With the user consent
+  enabled,
+  // Without the user consent
+  anonymous,
+  // On F-Droid builds
+  disabled,
 }

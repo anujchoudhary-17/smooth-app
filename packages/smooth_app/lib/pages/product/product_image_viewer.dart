@@ -1,5 +1,3 @@
-// ignore_for_file: use_build_context_synchronously
-
 import 'dart:io';
 
 import 'package:crop_image/crop_image.dart';
@@ -10,6 +8,7 @@ import 'package:photo_view/photo_view.dart';
 import 'package:provider/provider.dart';
 import 'package:smooth_app/background/background_task_unselect.dart';
 import 'package:smooth_app/data_models/product_image_data.dart';
+import 'package:smooth_app/data_models/up_to_date_mixin.dart';
 import 'package:smooth_app/database/dao_int.dart';
 import 'package:smooth_app/database/local_database.dart';
 import 'package:smooth_app/database/transient_file.dart';
@@ -32,142 +31,143 @@ class ProductImageViewer extends StatefulWidget {
     required this.imageField,
     required this.language,
     required this.setLanguage,
+    required this.isLoggedInMandatory,
   });
 
   final Product product;
   final ImageField imageField;
   final OpenFoodFactsLanguage language;
   final Future<void> Function(OpenFoodFactsLanguage? newLanguage) setLanguage;
+  final bool isLoggedInMandatory;
 
   @override
   State<ProductImageViewer> createState() => _ProductImageViewerState();
 }
 
-class _ProductImageViewerState extends State<ProductImageViewer> {
-  late Product _product;
-  late final Product _initialProduct;
-  late final LocalDatabase _localDatabase;
+class _ProductImageViewerState extends State<ProductImageViewer>
+    with UpToDateMixin {
   late ProductImageData _imageData;
-
-  String get _barcode => _initialProduct.barcode!;
 
   @override
   void initState() {
     super.initState();
-    _initialProduct = widget.product;
-    _localDatabase = context.read<LocalDatabase>();
-    _localDatabase.upToDate.showInterest(_barcode);
-  }
-
-  @override
-  void dispose() {
-    _localDatabase.upToDate.loseInterest(_barcode);
-    super.dispose();
+    initUpToDate(widget.product, context.read<LocalDatabase>());
   }
 
   @override
   Widget build(BuildContext context) {
     final AppLocalizations appLocalizations = AppLocalizations.of(context);
     context.watch<LocalDatabase>();
-    _product = _localDatabase.upToDate.getLocalUpToDate(_initialProduct);
+    refreshUpToDate();
     _imageData = getProductImageData(
-      _product,
+      upToDateProduct,
       widget.imageField,
       widget.language,
-      forceLanguage: true,
     );
     final ImageProvider? imageProvider = _getTransientFile().getImageProvider();
     final Iterable<OpenFoodFactsLanguage> selectedLanguages =
         getProductImageLanguages(
-      _product,
+      upToDateProduct,
       widget.imageField,
     );
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: <Widget>[
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.all(MINIMUM_TOUCH_SIZE / 2),
-            child: imageProvider == null
-                ? Stack(
-                    children: <Widget>[
-                      const SizedBox.expand(child: PictureNotFound()),
-                      Center(
-                        child: Text(
-                          selectedLanguages.isEmpty
-                              ? appLocalizations.edit_photo_language_none
-                              : appLocalizations
-                                  .edit_photo_language_not_this_one,
-                          style: Theme.of(context)
-                                  .textTheme
-                                  .headlineMedium
-                                  ?.copyWith(color: Colors.black) ??
-                              const TextStyle(color: Colors.black),
-                          textAlign: TextAlign.center,
+
+    return SafeArea(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: <Widget>[
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(MINIMUM_TOUCH_SIZE / 2),
+              child: imageProvider == null
+                  ? Stack(
+                      children: <Widget>[
+                        const SizedBox.expand(child: PictureNotFound()),
+                        Center(
+                          child: Text(
+                            selectedLanguages.isEmpty
+                                ? appLocalizations.edit_photo_language_none
+                                : appLocalizations
+                                    .edit_photo_language_not_this_one,
+                            style: Theme.of(context)
+                                    .textTheme
+                                    .headlineMedium
+                                    ?.copyWith(color: Colors.black) ??
+                                const TextStyle(color: Colors.black),
+                            textAlign: TextAlign.center,
+                          ),
                         ),
+                      ],
+                    )
+                  : PhotoView(
+                      minScale: 0.2,
+                      imageProvider: imageProvider,
+                      heroAttributes: PhotoViewHeroAttributes(
+                          tag: 'photo_${widget.imageField.offTag}',
+                          flightShuttleBuilder: (
+                            _,
+                            Animation<double> animation,
+                            HeroFlightDirection flightDirection,
+                            BuildContext fromHeroContext,
+                            BuildContext toHeroContext,
+                          ) {
+                            return AnimatedBuilder(
+                              animation: animation,
+                              builder: (_, __) {
+                                Widget widget;
+                                if (flightDirection ==
+                                    HeroFlightDirection.push) {
+                                  widget = fromHeroContext.widget;
+                                } else {
+                                  widget = toHeroContext.widget;
+                                }
+
+                                return ClipRRect(
+                                  borderRadius: BorderRadius.circular(
+                                          1 - animation.value) *
+                                      ROUNDED_RADIUS.x,
+                                  child: widget,
+                                );
+                              },
+                            );
+                          }),
+                      backgroundDecoration: const BoxDecoration(
+                        color: Colors.black,
                       ),
-                    ],
-                  )
-                : PhotoView(
-                    minScale: 0.2,
-                    imageProvider: imageProvider,
-                    heroAttributes: PhotoViewHeroAttributes(
-                      tag: imageProvider,
                     ),
-                    backgroundDecoration: const BoxDecoration(
-                      color: Colors.black,
+            ),
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisSize: MainAxisSize.max,
+            children: <Widget>[
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(SMALL_SPACE),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(LARGE_SPACE),
+                      border: Border.all(
+                        color: Colors.white,
+                        width: 3,
+                      ),
+                    ),
+                    child: LanguageSelector(
+                      setLanguage: widget.setLanguage,
+                      displayedLanguage: widget.language,
+                      selectedLanguages: selectedLanguages,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsetsDirectional.symmetric(
+                        horizontal: 13.0,
+                        vertical: SMALL_SPACE,
+                      ),
                     ),
                   ),
+                ),
+              )
+            ],
           ),
-        ),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          mainAxisSize: MainAxisSize.max,
-          children: <Widget>[
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: SMALL_SPACE),
-                child: LanguageSelector(
-                  setLanguage: widget.setLanguage,
-                  displayedLanguage: widget.language,
-                  selectedLanguages: selectedLanguages,
-                  foregroundColor: Colors.white,
-                ),
-              ),
-            ),
-          ],
-        ),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          mainAxisSize: MainAxisSize.max,
-          children: <Widget>[
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: SMALL_SPACE),
-                child: ProductImageServerButton(
-                  barcode: _barcode,
-                  imageField: widget.imageField,
-                  language: widget.language,
-                ),
-              ),
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: SMALL_SPACE),
-                child: ProductImageLocalButton(
-                  firstPhoto: imageProvider == null,
-                  barcode: _barcode,
-                  imageField: widget.imageField,
-                  language: widget.language,
-                ),
-              ),
-            ),
-          ],
-        ),
-        if (imageProvider != null)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -176,18 +176,52 @@ class _ProductImageViewerState extends State<ProductImageViewer> {
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: SMALL_SPACE),
-                  child: _getUnselectImageButton(appLocalizations),
+                  child: ProductImageServerButton(
+                    product: upToDateProduct,
+                    imageField: widget.imageField,
+                    language: widget.language,
+                    isLoggedInMandatory: widget.isLoggedInMandatory,
+                  ),
                 ),
               ),
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: SMALL_SPACE),
-                  child: _getEditImageButton(appLocalizations),
+                  child: ProductImageLocalButton(
+                    firstPhoto: imageProvider == null,
+                    barcode: barcode,
+                    imageField: widget.imageField,
+                    language: widget.language,
+                    isLoggedInMandatory: widget.isLoggedInMandatory,
+                  ),
                 ),
               ),
             ],
           ),
-      ],
+          if (imageProvider != null)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisSize: MainAxisSize.max,
+              children: <Widget>[
+                Expanded(
+                  child: Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: SMALL_SPACE),
+                    child: _getUnselectImageButton(appLocalizations),
+                  ),
+                ),
+                Expanded(
+                  child: Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: SMALL_SPACE),
+                    child: _getEditImageButton(appLocalizations),
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
     );
   }
 
@@ -209,7 +243,10 @@ class _ProductImageViewerState extends State<ProductImageViewer> {
 
   Future<File?> _actionEditImage() async {
     final NavigatorState navigatorState = Navigator.of(context);
-    if (!await ProductRefresher().checkIfLoggedIn(context)) {
+    if (!await ProductRefresher().checkIfLoggedIn(
+      context,
+      isLoggedInMandatory: widget.isLoggedInMandatory,
+    )) {
       return null;
     }
     // best possibility: with the crop parameters
@@ -230,11 +267,13 @@ class _ProductImageViewerState extends State<ProductImageViewer> {
 
     // but if not possible, get the best picture from the server.
     final String? imageUrl = _imageData.getImageUrl(ImageSize.ORIGINAL);
-    imageFile = await downloadImageUrl(
-      context,
-      imageUrl,
-      DaoInt(_localDatabase),
-    );
+    if (context.mounted) {
+      imageFile = await downloadImageUrl(
+        context,
+        imageUrl,
+        DaoInt(context.read<LocalDatabase>()),
+      );
+    }
     if (imageFile != null) {
       return _openCropPage(navigatorState, imageFile);
     }
@@ -244,17 +283,23 @@ class _ProductImageViewerState extends State<ProductImageViewer> {
 
   TransientFile _getTransientFile() => TransientFile.fromProductImageData(
         _imageData,
-        _barcode,
+        barcode,
         widget.language,
       );
 
   Future<void> _actionUnselect(final AppLocalizations appLocalizations) async {
     final NavigatorState navigatorState = Navigator.of(context);
 
-    if (!await ProductRefresher().checkIfLoggedIn(context)) {
+    if (!await ProductRefresher().checkIfLoggedIn(
+      context,
+      isLoggedInMandatory: widget.isLoggedInMandatory,
+    )) {
       return;
     }
 
+    if (!context.mounted) {
+      return;
+    }
     final bool? confirmed = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
@@ -276,14 +321,17 @@ class _ProductImageViewerState extends State<ProductImageViewer> {
       },
     );
     if (confirmed == true) {
-      await BackgroundTaskUnselect.addTask(
-        _barcode,
-        imageField: widget.imageField,
-        widget: this,
-        language: widget.language,
-      );
-      _localDatabase.notifyListeners();
-      navigatorState.pop();
+      if (context.mounted) {
+        final LocalDatabase localDatabase = context.read<LocalDatabase>();
+        await BackgroundTaskUnselect.addTask(
+          barcode,
+          imageField: widget.imageField,
+          context: context,
+          language: widget.language,
+        );
+        localDatabase.notifyListeners();
+        navigatorState.pop();
+      }
     }
   }
 
@@ -298,13 +346,14 @@ class _ProductImageViewerState extends State<ProductImageViewer> {
         MaterialPageRoute<File>(
           builder: (BuildContext context) => CropPage(
             language: widget.language,
-            barcode: _product.barcode!,
+            barcode: barcode,
             imageField: _imageData.imageField,
             inputFile: imageFile,
             imageId: imageId,
             initiallyDifferent: false,
             initialCropRect: initialCropRect,
             initialRotation: initialRotation,
+            isLoggedInMandatory: widget.isLoggedInMandatory,
           ),
           fullscreenDialog: true,
         ),
@@ -319,7 +368,7 @@ class _ProductImageViewerState extends State<ProductImageViewer> {
     final File? imageFile = await downloadImageUrl(
       context,
       ImageHelper.getUploadedImageUrl(
-        _product.barcode!,
+        barcode,
         imageId,
         ImageSize.ORIGINAL,
       ),
@@ -340,10 +389,10 @@ class _ProductImageViewerState extends State<ProductImageViewer> {
   }
 
   ProductImage? _getBestProductImage() {
-    if (_product.images == null) {
+    if (upToDateProduct.images == null) {
       return null;
     }
-    for (final ProductImage productImage in _product.images!) {
+    for (final ProductImage productImage in upToDateProduct.images!) {
       if (productImage.field != _imageData.imageField) {
         continue;
       }

@@ -2,15 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:matomo_tracker/matomo_tracker.dart';
 import 'package:openfoodfacts/openfoodfacts.dart';
 import 'package:provider/provider.dart';
+import 'package:smooth_app/data_models/up_to_date_mixin.dart';
 import 'package:smooth_app/database/local_database.dart';
 import 'package:smooth_app/generic_lib/design_constants.dart';
 import 'package:smooth_app/generic_lib/widgets/smooth_card.dart';
 import 'package:smooth_app/knowledge_panel/knowledge_panels/knowledge_panel_expanded_card.dart';
 import 'package:smooth_app/knowledge_panel/knowledge_panels_builder.dart';
-import 'package:smooth_app/pages/inherited_data_manager.dart';
+import 'package:smooth_app/pages/carousel_manager.dart';
 import 'package:smooth_app/pages/product/common/product_refresher.dart';
+import 'package:smooth_app/widgets/smooth_app_bar.dart';
 import 'package:smooth_app/widgets/smooth_scaffold.dart';
 
+/// Detail page of knowledge panels (if you click on the forward/more button).
 class KnowledgePanelPage extends StatefulWidget {
   const KnowledgePanelPage({
     required this.panelId,
@@ -25,29 +28,14 @@ class KnowledgePanelPage extends StatefulWidget {
 }
 
 class _KnowledgePanelPageState extends State<KnowledgePanelPage>
-    with TraceableClientMixin {
+    with TraceableClientMixin, UpToDateMixin {
   @override
-  String get traceTitle => 'knowledge_panel_page';
-
-  @override
-  String get traceName => 'Opened full knowledge panel page';
-
-  late Product _product;
-  late final Product _initialProduct;
-  late final LocalDatabase _localDatabase;
+  String get actionName => 'Opened full knowledge panel page';
 
   @override
   void initState() {
     super.initState();
-    _initialProduct = widget.product;
-    _localDatabase = context.read<LocalDatabase>();
-    _localDatabase.upToDate.showInterest(_initialProduct.barcode!);
-  }
-
-  @override
-  void dispose() {
-    _localDatabase.upToDate.loseInterest(_initialProduct.barcode!);
-    super.dispose();
+    initUpToDate(widget.product, context.read<LocalDatabase>());
   }
 
   static KnowledgePanelPanelGroupElement? _groupElementOf(
@@ -62,9 +50,9 @@ class _KnowledgePanelPageState extends State<KnowledgePanelPage>
   @override
   Widget build(BuildContext context) {
     context.watch<LocalDatabase>();
-    _product = _localDatabase.upToDate.getLocalUpToDate(_initialProduct);
+    refreshUpToDate();
     return SmoothScaffold(
-      appBar: AppBar(
+      appBar: SmoothAppBar(
         title: Text(
           _getTitle(),
           maxLines: 2,
@@ -72,18 +60,32 @@ class _KnowledgePanelPageState extends State<KnowledgePanelPage>
       ),
       body: RefreshIndicator(
         onRefresh: () => _refreshProduct(context),
-        child: SingleChildScrollView(
+        child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-          child: SmoothCard(
-            padding: const EdgeInsets.all(
-              SMALL_SPACE,
-            ),
-            child: KnowledgePanelExpandedCard(
-              panelId: widget.panelId,
-              product: _product,
-              isInitiallyExpanded: true,
-            ),
-          ),
+          slivers: <Widget>[
+            SliverToBoxAdapter(
+              child: Column(
+                children: <Widget>[
+                  Padding(
+                    padding: const EdgeInsets.only(
+                      bottom: SMALL_SPACE,
+                      top: SMALL_SPACE,
+                    ),
+                    child: SmoothCard(
+                      padding: const EdgeInsets.all(
+                        SMALL_SPACE,
+                      ),
+                      child: KnowledgePanelExpandedCard(
+                        panelId: widget.panelId,
+                        product: upToDateProduct,
+                        isInitiallyExpanded: true,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          ],
         ),
       ),
     );
@@ -91,13 +93,14 @@ class _KnowledgePanelPageState extends State<KnowledgePanelPage>
 
   Future<void> _refreshProduct(BuildContext context) async {
     try {
-      final String barcode = InheritedDataManager.of(context).currentBarcode;
-      if (barcode.isEmpty) {
+      final String? barcode =
+          ExternalCarouselManager.read(context).currentBarcode;
+      if (barcode?.isEmpty == true) {
         return;
       }
       await ProductRefresher().fetchAndRefresh(
-        barcode: barcode,
-        widget: this,
+        barcode: barcode ?? '',
+        context: context,
       );
     } catch (e) {
       //no refreshing during onboarding
@@ -111,8 +114,10 @@ class _KnowledgePanelPageState extends State<KnowledgePanelPage>
         groupElement?.title!.isNotEmpty == true) {
       return groupElement!.title!;
     }
-    final KnowledgePanel? panel =
-        KnowledgePanelWidget.getKnowledgePanel(_product, widget.panelId);
+    final KnowledgePanel? panel = KnowledgePanelsBuilder.getKnowledgePanel(
+      upToDateProduct,
+      widget.panelId,
+    );
     if (panel?.titleElement?.title.isNotEmpty == true) {
       return (panel?.titleElement?.title)!;
     }

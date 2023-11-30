@@ -1,20 +1,24 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:smooth_app/generic_lib/bottom_sheets/smooth_bottom_sheet.dart';
 import 'package:smooth_app/generic_lib/design_constants.dart';
-import 'package:smooth_app/generic_lib/dialogs/smooth_alert_dialog.dart';
+import 'package:smooth_app/pages/preferences/user_preferences_item.dart';
 
 /// A dashed line
 class UserPreferencesListItemDivider extends StatelessWidget {
   const UserPreferencesListItemDivider({
+    this.margin,
     Key? key,
   }) : super(key: key);
+
+  final EdgeInsetsGeometry? margin;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: LARGE_SPACE,
-      ),
+      padding: margin ??
+          const EdgeInsets.symmetric(
+            horizontal: LARGE_SPACE,
+          ),
       child: CustomPaint(
         size: const Size(
           double.infinity,
@@ -59,44 +63,105 @@ class _DashedLinePainter extends CustomPainter {
   bool shouldRepaint(CustomPainter oldDelegate) => false;
 }
 
-class UserPreferencesSwitchItem extends StatelessWidget {
-  const UserPreferencesSwitchItem({
+class UserPreferencesSwitchWidget extends StatelessWidget {
+  const UserPreferencesSwitchWidget({
     required this.title,
     required this.subtitle,
     required this.value,
     required this.onChanged,
-    Key? key,
-  }) : super(key: key);
+  });
 
   final String title;
-  final String subtitle;
+  final String? subtitle;
   final bool value;
-  final ValueChanged<bool>? onChanged;
+  final ValueChanged<bool> onChanged;
 
   @override
-  Widget build(BuildContext context) {
-    return SwitchListTile.adaptive(
-      title: Padding(
-        padding: const EdgeInsetsDirectional.only(
-          top: SMALL_SPACE,
-          bottom: SMALL_SPACE,
+  Widget build(BuildContext context) => SwitchListTile.adaptive(
+        title: Padding(
+          padding: const EdgeInsetsDirectional.only(
+            top: SMALL_SPACE,
+            bottom: SMALL_SPACE,
+          ),
+          child: Text(title, style: Theme.of(context).textTheme.headlineMedium),
         ),
-        child: Text(title, style: Theme.of(context).textTheme.headlineMedium),
-      ),
-      subtitle: Padding(
-        padding: const EdgeInsetsDirectional.only(
-          bottom: SMALL_SPACE,
-        ),
-        child: Text(
-          subtitle,
-          style: const TextStyle(height: 1.5),
-        ),
-      ),
-      value: value,
-      onChanged: onChanged,
-      isThreeLine: true,
-    );
-  }
+        subtitle: subtitle == null
+            ? null
+            : Padding(
+                padding: const EdgeInsetsDirectional.only(
+                  bottom: SMALL_SPACE,
+                ),
+                child: Text(
+                  subtitle!,
+                  style: const TextStyle(height: 1.5),
+                ),
+              ),
+        activeColor: Theme.of(context).primaryColor,
+        value: value,
+        onChanged: onChanged,
+        isThreeLine: subtitle != null,
+      );
+}
+
+class UserPreferencesItemSwitch implements UserPreferencesItem {
+  const UserPreferencesItemSwitch({
+    required this.title,
+    this.subtitle,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final String title;
+  final String? subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  List<String> get labels => <String>[
+        title,
+        if (subtitle != null) subtitle!,
+      ];
+
+  @override
+  Widget Function(BuildContext) get builder =>
+      (final BuildContext context) => UserPreferencesSwitchWidget(
+            title: title,
+            subtitle: subtitle,
+            value: value,
+            onChanged: onChanged,
+          );
+}
+
+class UserPreferencesItemTile implements UserPreferencesItem {
+  const UserPreferencesItemTile({
+    required this.title,
+    this.subtitle,
+    this.onTap,
+    this.leading,
+    this.trailing,
+  });
+
+  final String title;
+  final String? subtitle;
+  final VoidCallback? onTap;
+  final Widget? leading;
+  final Widget? trailing;
+
+  @override
+  List<String> get labels => <String>[
+        title,
+        if (subtitle != null) subtitle!,
+      ];
+
+  @override
+  Widget Function(BuildContext) get builder =>
+      (final BuildContext context) => ListTile(
+            title: Text(title),
+            subtitle: subtitle == null ? null : Text(subtitle!),
+            onTap: onTap,
+            leading: leading,
+            trailing: trailing,
+          );
 }
 
 /// A preference allowing to choose between a list of items.
@@ -110,11 +175,12 @@ class UserPreferencesSwitchItem extends StatelessWidget {
 class UserPreferencesMultipleChoicesItem<T> extends StatelessWidget {
   const UserPreferencesMultipleChoicesItem({
     required this.title,
-    required this.subtitle,
     required this.labels,
     required this.values,
     required this.currentValue,
     required this.onChanged,
+    this.leading,
+    this.leadingBuilder,
     this.descriptions,
     this.dialogHeight,
     Key? key,
@@ -125,7 +191,8 @@ class UserPreferencesMultipleChoicesItem<T> extends StatelessWidget {
         super(key: key);
 
   final String title;
-  final String subtitle;
+  final IconData? leading;
+  final Iterable<WidgetBuilder>? leadingBuilder;
   final Iterable<String> labels;
   final Iterable<String>? descriptions;
   final Iterable<T> values;
@@ -135,75 +202,131 @@ class UserPreferencesMultipleChoicesItem<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final int currentValueIndex = _findCurrentValueIndex();
+
     return ListTile(
       title: Padding(
         padding: const EdgeInsetsDirectional.only(
           top: SMALL_SPACE,
           bottom: SMALL_SPACE,
         ),
-        child: Text(title, style: Theme.of(context).textTheme.headlineMedium),
+        child: Text(
+          title,
+          style: theme.textTheme.headlineMedium,
+        ),
       ),
       subtitle: Padding(
         padding: const EdgeInsetsDirectional.only(
-          bottom: SMALL_SPACE,
+          start: SMALL_SPACE,
+          top: SMALL_SPACE,
+          bottom: LARGE_SPACE,
         ),
-        child: Text(
-          subtitle,
-          style: const TextStyle(height: 1.5),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: <Widget>[
+            if (leadingBuilder != null)
+              Builder(builder: leadingBuilder!.elementAt(currentValueIndex))
+            else if (leading != null)
+              Icon(leading),
+            Expanded(
+              child: Padding(
+                padding: EdgeInsetsDirectional.only(
+                  start: leadingBuilder != null || leading != null
+                      ? LARGE_SPACE
+                      : 0.0,
+                  end: LARGE_SPACE,
+                ),
+                child: Text(
+                  labels.elementAt(currentValueIndex),
+                  style: theme.textTheme.bodyMedium,
+                ),
+              ),
+            ),
+            const Icon(Icons.edit)
+          ],
         ),
       ),
       onTap: () async {
-        final T? res = await showDialog<T>(
-            context: context,
-            builder: (BuildContext context) {
-              final AppLocalizations appLocalizations =
-                  AppLocalizations.of(context);
+        final double itemHeight = (descriptions != null ? 15.0 : 0.0) +
+            (5.0 * 2) +
+            1.0 +
+            (56.0 + Theme.of(context).visualDensity.baseSizeAdjustment.dy);
 
-              return SmoothAlertDialog(
-                title: title,
-                body: SizedBox(
-                  height: dialogHeight ?? 250.0,
-                  child: SizedBox(
-                    width: MediaQuery.of(context).size.width,
-                    child: ListView.builder(
-                        itemCount: labels.length,
-                        itemBuilder: (BuildContext context, int position) {
-                          final bool selected =
-                              currentValue == values.elementAt(position);
-                          final Color? selectedColor =
-                              selected ? Theme.of(context).primaryColor : null;
+        final MediaQueryData queryData = MediaQueryData.fromView(
+            WidgetsBinding.instance.platformDispatcher.implicitView!);
 
-                          return ColoredBox(
-                            color: selectedColor?.withOpacity(0.1) ??
-                                Colors.transparent,
-                            child: ListTile(
-                              title: Text(
-                                labels.elementAt(position),
-                                style:
-                                    Theme.of(context).textTheme.headlineMedium,
-                              ),
-                              subtitle: descriptions != null
-                                  ? Text(descriptions!.elementAt(position))
-                                  : null,
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: LARGE_SPACE,
-                                vertical: 5.0,
-                              ),
-                              onTap: () {
-                                Navigator.of(context)
-                                    .pop(values.elementAt(position));
-                              },
-                            ),
-                          );
-                        }),
+        // If there is not enough space, we use the scrolling sheet
+        final T? res;
+        final SmoothModalSheetHeader header =
+            SmoothModalSheetHeader(title: title);
+        if ((itemHeight * labels.length + header.computeHeight(context)) >
+            (queryData.size.height * 0.9) - queryData.viewPadding.top) {
+          res = await showSmoothDraggableModalSheet<T>(
+              context: context,
+              header: SmoothModalSheetHeader(title: title),
+              bodyBuilder: (BuildContext context) {
+                return SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    childCount: labels.length,
+                    (BuildContext context, int position) {
+                      final bool selected =
+                          currentValue == values.elementAt(position);
+
+                      return _ChoiceItem<T>(
+                        selected: selected,
+                        label: labels.elementAt(position),
+                        value: values.elementAt(position),
+                        description: descriptions?.elementAt(position),
+                        leading: leadingBuilder != null
+                            ? Builder(
+                                builder: leadingBuilder!.elementAt(position))
+                            : null,
+                        hasDivider: position < labels.length - 1,
+                      );
+                    },
                   ),
-                ),
-                negativeAction: SmoothActionButton(
-                  text: appLocalizations.cancel,
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
-              );
-            });
+                );
+              });
+        } else {
+          final SmoothModalSheet smoothModalSheet = SmoothModalSheet(
+            title: title,
+            bodyPadding: EdgeInsets.zero,
+            body: SizedBox(
+              height: itemHeight * labels.length,
+              child: ListView.separated(
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: labels.length,
+                itemBuilder: (BuildContext context, int position) {
+                  final bool selected =
+                      currentValue == values.elementAt(position);
+
+                  return _ChoiceItem<T>(
+                    selected: selected,
+                    label: labels.elementAt(position),
+                    value: values.elementAt(position),
+                    description: descriptions?.elementAt(position),
+                    leading: leadingBuilder != null
+                        ? Builder(builder: leadingBuilder!.elementAt(position))
+                        : null,
+                    hasDivider: false,
+                  );
+                },
+                separatorBuilder: (_, __) => const Divider(height: 1.0),
+              ),
+            ),
+          );
+
+          res = await showSmoothModalSheet<T>(
+            context: context,
+            minHeight: smoothModalSheet.computeHeaderHeight(context) +
+                itemHeight * labels.length,
+            builder: (BuildContext context) {
+              return smoothModalSheet;
+            },
+          );
+        }
 
         if (res != null) {
           onChanged?.call(res);
@@ -212,30 +335,66 @@ class UserPreferencesMultipleChoicesItem<T> extends StatelessWidget {
       isThreeLine: true,
     );
   }
+
+  int _findCurrentValueIndex() {
+    for (int i = 0; i < values.length; i++) {
+      if (values.elementAt(i) == currentValue) {
+        return i;
+      }
+    }
+    return 0;
+  }
 }
 
-class UserPreferencesTitle extends StatelessWidget {
-  const UserPreferencesTitle({required this.label, Key? key})
-      : assert(label.length > 0),
-        super(key: key);
+class _ChoiceItem<T> extends StatelessWidget {
+  const _ChoiceItem({
+    required this.value,
+    required this.label,
+    required this.selected,
+    this.description,
+    this.leading,
+    this.hasDivider = true,
+  });
 
+  final T value;
   final String label;
+  final String? description;
+  final Widget? leading;
+  final bool selected;
+  final bool hasDivider;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: Padding(
-        padding: const EdgeInsetsDirectional.only(
-          top: SMALL_SPACE,
-          bottom: MEDIUM_SPACE,
-          // Horizontal = same as ListTile
-          start: LARGE_SPACE,
-          end: LARGE_SPACE,
-        ),
-        child: Text(
-          label,
-          style: Theme.of(context).textTheme.displayLarge,
+    final ThemeData theme = Theme.of(context);
+    final Color? selectedColor = selected ? theme.primaryColor : null;
+
+    return Semantics(
+      value: label,
+      selected: selected,
+      button: true,
+      excludeSemantics: true,
+      child: Ink(
+        color: selectedColor?.withOpacity(0.1) ?? Colors.transparent,
+        child: Column(
+          children: <Widget>[
+            ListTile(
+              leading: leading,
+              titleAlignment: ListTileTitleAlignment.center,
+              title: Text(
+                label,
+                style: theme.textTheme.headlineMedium?.copyWith(
+                  fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+                ),
+              ),
+              subtitle: description != null ? Text(description!) : null,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: LARGE_SPACE,
+                vertical: 5.0,
+              ),
+              onTap: () => Navigator.of(context).pop(value),
+            ),
+            if (hasDivider) const Divider(height: 1.0),
+          ],
         ),
       ),
     );
@@ -248,16 +407,20 @@ class UserPreferenceListTile extends StatelessWidget {
     required this.leading,
     required this.onTap,
     required this.showDivider,
+    this.subTitle,
     super.key,
   });
 
   final String title;
+  final String? subTitle;
   final Widget leading;
   final Future<void> Function(BuildContext) onTap;
   final bool showDivider;
 
   @override
   Widget build(BuildContext context) {
+    final TextTheme textTheme = Theme.of(context).textTheme;
+
     return Column(
       children: <Widget>[
         ListTile(
@@ -267,9 +430,19 @@ class UserPreferenceListTile extends StatelessWidget {
           ),
           title: Text(
             title,
-            style: const TextStyle(fontWeight: FontWeight.bold),
+            style: textTheme.headlineMedium,
           ),
+          subtitle: subTitle != null
+              ? Text(
+                  subTitle!,
+                  style: textTheme.bodyMedium,
+                )
+              : null,
           onTap: () => onTap(context),
+          contentPadding: const EdgeInsetsDirectional.symmetric(
+            horizontal: LARGE_SPACE,
+            vertical: SMALL_SPACE,
+          ),
         ),
         if (showDivider) const UserPreferencesListItemDivider(),
       ],

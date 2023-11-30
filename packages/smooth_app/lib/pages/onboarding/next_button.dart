@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:smooth_app/data_models/onboarding_loader.dart';
-import 'package:smooth_app/data_models/user_preferences.dart';
+import 'package:smooth_app/data_models/preferences/user_preferences.dart';
 import 'package:smooth_app/database/local_database.dart';
 import 'package:smooth_app/pages/onboarding/onboarding_bottom_bar.dart';
 import 'package:smooth_app/pages/onboarding/onboarding_flow_navigator.dart';
@@ -36,7 +36,7 @@ class NextButton extends StatelessWidget {
         OnboardingFlowNavigator(userPreferences);
     final OnboardingPage previousPage = currentPage.getPrevPage();
     return OnboardingBottomBar(
-      leftButton: previousPage.isOnboardingNotStarted()
+      startButton: previousPage.isOnboardingNotStarted()
           ? null
           : OnboardingBottomIcon(
               onPressed: () async => navigator.navigateToPage(
@@ -46,19 +46,20 @@ class NextButton extends StatelessWidget {
               backgroundColor: Colors.white,
               foregroundColor: Colors.black,
               icon: ConstantIcons.instance.getBackIcon(),
-              iconPadding: Platform.isIOS
-                  ? const EdgeInsetsDirectional.only(end: 2.5)
+              iconPadding: Platform.isIOS || Platform.isMacOS
+                  ? const EdgeInsetsDirectional.only(end: 2.0)
                   : EdgeInsets.zero,
             ),
-      rightButton: OnboardingBottomButton(
+      endButton: OnboardingBottomButton(
         onPressed: () async {
           await OnboardingLoader(localDatabase)
               .runAtNextTime(currentPage, context);
-          //ignore: use_build_context_synchronously
-          await navigator.navigateToPage(
-            context,
-            currentPage.getNextPage(),
-          );
+          if (context.mounted) {
+            await navigator.navigateToPage(
+              context,
+              currentPage.getNextPage(),
+            );
+          }
         },
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,

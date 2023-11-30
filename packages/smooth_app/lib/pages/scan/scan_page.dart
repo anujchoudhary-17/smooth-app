@@ -1,12 +1,18 @@
+import 'dart:io';
 import 'dart:math' as math;
 
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:smooth_app/data_models/continuous_scan_model.dart';
+import 'package:smooth_app/data_models/preferences/user_preferences.dart';
 import 'package:smooth_app/generic_lib/design_constants.dart';
 import 'package:smooth_app/generic_lib/dialogs/smooth_alert_dialog.dart';
 import 'package:smooth_app/generic_lib/widgets/smooth_card.dart';
+import 'package:smooth_app/helpers/camera_helper.dart';
+import 'package:smooth_app/helpers/haptic_feedback_helper.dart';
 import 'package:smooth_app/helpers/permission_helper.dart';
 import 'package:smooth_app/pages/scan/camera_scan_page.dart';
 import 'package:smooth_app/widgets/smooth_product_carousel.dart';
@@ -20,7 +26,12 @@ class ScanPage extends StatefulWidget {
 }
 
 class _ScanPageState extends State<ScanPage> {
-  ContinuousScanModel? _model;
+  /// Audio player to play the beep sound on scan
+  /// This attribute is only initialized when a camera is available AND the
+  /// setting is set to ON
+  AudioPlayer? _musicPlayer;
+
+  late UserPreferences _userPreferences;
 
   /// Percentage of the bottom part of the screen that hosts the carousel.
   static const int _carouselHeightPct = 55;
@@ -28,60 +39,132 @@ class _ScanPageState extends State<ScanPage> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _updateModel();
-  }
 
-  Future<void> _updateModel() async {
-    if (_model == null) {
-      _model = context.read<ContinuousScanModel>();
-    } else {
-      await _model!.refresh();
+    if (mounted) {
+      _userPreferences = context.watch<UserPreferences>();
     }
-    setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_model == null) {
+    if (context.watch<ContinuousScanModel?>() == null) {
       return const Center(child: CircularProgressIndicator.adaptive());
     }
 
+    final AppLocalizations appLocalizations = AppLocalizations.of(context);
+    final TextDirection direction = Directionality.of(context);
+    final bool hasACamera = CameraHelper.hasACamera;
+
     return SmoothScaffold(
-      brightness: Brightness.light,
-      body: SafeArea(
-        child: Column(
-          children: <Widget>[
-            Expanded(
-              flex: 100 - _carouselHeightPct,
-              child: Consumer<PermissionListener>(
-                builder: (
-                  BuildContext context,
-                  PermissionListener listener,
-                  _,
-                ) {
-                  switch (listener.value.status) {
-                    case DevicePermissionStatus.checking:
-                      return EMPTY_WIDGET;
-                    case DevicePermissionStatus.granted:
-                      // TODO(m123): change
-                      return const CameraScannerPage();
-                    default:
-                      return const _PermissionDeniedCard();
-                  }
-                },
-              ),
+      brightness:
+          Theme.of(context).brightness == Brightness.light && Platform.isIOS
+              ? Brightness.dark
+              : null,
+      body: Container(
+        color: Colors.white,
+        child: SafeArea(
+          child: Container(
+            color: Theme.of(context).colorScheme.background,
+            child: Column(
+              children: <Widget>[
+                if (hasACamera)
+                  Expanded(
+                    flex: 100 - _carouselHeightPct,
+                    child: Consumer<PermissionListener>(
+                      builder: (
+                        BuildContext context,
+                        PermissionListener listener,
+                        _,
+                      ) {
+                        switch (listener.value.status) {
+                          case DevicePermissionStatus.checking:
+                            return EMPTY_WIDGET;
+                          case DevicePermissionStatus.granted:
+                            // TODO(m123): change
+                            return const CameraScannerPage();
+                          default:
+                            return const _PermissionDeniedCard();
+                        }
+                      },
+                    ),
+                  ),
+                Expanded(
+                  flex: _carouselHeightPct,
+                  child: Padding(
+                    padding: const EdgeInsetsDirectional.only(bottom: 10.0),
+                    child: SmoothProductCarousel(
+                      containSearchCard: true,
+                      onPageChangedTo: (int page, String? barcode) async {
+                        if (barcode == null) {
+                          // We only notify for new products
+                          return;
+                        }
+
+                        // Both are Future methods, but it doesn't matter to wait here
+                        SmoothHapticFeedback.lightNotification();
+
+                        if (_userPreferences.playCameraSound) {
+                          await _initSoundManagerIfNecessary();
+                          await _musicPlayer!.stop();
+                          await _musicPlayer!.play(
+                            AssetSource('audio/beep.wav'),
+                            volume: 0.5,
+                            ctx: const AudioContext(
+                              android: AudioContextAndroid(
+                                isSpeakerphoneOn: false,
+                                stayAwake: false,
+                                contentType: AndroidContentType.sonification,
+                                usageType: AndroidUsageType.notification,
+                                audioFocus:
+                                    AndroidAudioFocus.gainTransientMayDuck,
+                              ),
+                              iOS: AudioContextIOS(
+                                category: AVAudioSessionCategory.soloAmbient,
+                                options: <AVAudioSessionOptions>[
+                                  AVAudioSessionOptions.mixWithOthers,
+                                ],
+                              ),
+                            ),
+                          );
+                        }
+
+                        SemanticsService.announce(
+                          appLocalizations.scan_announce_new_barcode(barcode),
+                          direction,
+                          assertiveness: Assertiveness.assertive,
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const Expanded(
-              flex: _carouselHeightPct,
-              child: Padding(
-                padding: EdgeInsetsDirectional.only(bottom: 10),
-                child: SmoothProductCarousel(containSearchCard: true),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
+  }
+
+  /// Only initialize the "beep" player when needed
+  /// (at least one camera available + settings set to ON)
+  Future<void> _initSoundManagerIfNecessary() async {
+    if (_musicPlayer != null) {
+      return;
+    }
+
+    _musicPlayer = AudioPlayer(playerId: '1');
+  }
+
+  Future<void> _disposeSoundManager() async {
+    await _musicPlayer?.release();
+    await _musicPlayer?.dispose();
+    _musicPlayer = null;
+  }
+
+  @override
+  void dispose() {
+    _disposeSoundManager();
+    super.dispose();
   }
 }
 
@@ -98,11 +181,9 @@ class _PermissionDeniedCard extends StatelessWidget {
           return Container(
             alignment: Alignment.topCenter,
             constraints: BoxConstraints.tightForFinite(
-              width: constraints.maxWidth *
-                  SmoothProductCarousel.carouselViewPortFraction,
+              width: constraints.maxWidth,
               height: math.min(constraints.maxHeight * 0.9, 200),
             ),
-            padding: SmoothProductCarousel.carouselItemInternalPadding,
             child: SmoothCard(
               padding: const EdgeInsetsDirectional.only(
                 top: 10.0,

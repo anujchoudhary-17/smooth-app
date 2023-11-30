@@ -3,8 +3,6 @@ name: Crowdin Action
 on:
   push:
     branches: [ crowdin-trigger ]
-  schedule:
-  - cron: "0 19 * * *"
 jobs:
   synchronize-with-crowdin:
     runs-on: ubuntu-latest
@@ -12,10 +10,10 @@ jobs:
     steps:
 
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: crowdin action
-      uses: crowdin/github-action@v1.9.0
+      uses: crowdin/github-action@v1.15.2
       continue-on-error: true
       with:
         # Upload sources to Crowdin

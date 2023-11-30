@@ -12,6 +12,7 @@ import 'package:smooth_app/pages/product/common/product_dialog_helper.dart';
 import 'package:smooth_app/pages/product/common/product_query_page_helper.dart';
 import 'package:smooth_app/pages/scan/search_history_view.dart';
 import 'package:smooth_app/query/keywords_product_query.dart';
+import 'package:smooth_app/widgets/smooth_app_bar.dart';
 import 'package:smooth_app/widgets/smooth_scaffold.dart';
 
 void _performSearch(
@@ -62,11 +63,15 @@ Future<void> _onSubmittedBarcode(
       searchCategory: 'barcode',
       searchCount: 1,
     );
-    //ignore: use_build_context_synchronously
-    AppNavigator.of(context).push(
-      AppRoutes.PRODUCT(fetchedProduct.product!.barcode!),
-      extra: fetchedProduct.product,
-    );
+    if (context.mounted) {
+      AppNavigator.of(context).push(
+        AppRoutes.PRODUCT(
+          fetchedProduct.product!.barcode!,
+          heroTag: 'search_${fetchedProduct.product!.barcode!}',
+        ),
+        extra: fetchedProduct.product,
+      );
+    }
   } else {
     AnalyticsHelper.trackSearch(
       search: value,
@@ -105,7 +110,7 @@ class _SearchPageState extends State<SearchPage> {
   @override
   Widget build(BuildContext context) {
     return SmoothScaffold(
-      appBar: AppBar(toolbarHeight: 0.0),
+      appBar: SmoothAppBar(toolbarHeight: 0.0),
       body: ChangeNotifierProvider<TextEditingController>(
         create: (_) => _searchTextController,
         child: Column(
@@ -227,7 +232,8 @@ class _SearchFieldState extends State<SearchField> {
         vertical: 17.0,
       ),
       hintText: localizations.search,
-      suffixIcon: widget.showClearButton ? _buildClearButton() : null,
+      suffixIcon:
+          widget.showClearButton ? _buildClearButton(localizations) : null,
     );
 
     const TextStyle textStyle = TextStyle(fontSize: 18.0);
@@ -278,19 +284,32 @@ class _SearchFieldState extends State<SearchField> {
     }
   }
 
-  Widget _buildClearButton() {
+  Widget _buildClearButton(AppLocalizations localizations) {
     return Padding(
       padding: const EdgeInsetsDirectional.only(end: MEDIUM_SPACE),
-      child: IconButton(
-        onPressed: _handleClear,
-        icon: AnimatedCrossFade(
-          duration: SmoothAnimationsDuration.brief,
-          crossFadeState:
-              _isEmpty ? CrossFadeState.showFirst : CrossFadeState.showSecond,
-          // Closes the page.
-          firstChild: const Icon(Icons.close),
-          // Clears the text.
-          secondChild: const Icon(Icons.cancel),
+      child: ClipOval(
+        child: Material(
+          type: MaterialType.transparency,
+          child: IconButton(
+            tooltip: localizations.clear_search,
+            onPressed: _handleClear,
+            icon: AnimatedCrossFade(
+              duration: SmoothAnimationsDuration.short,
+              crossFadeState: _isEmpty
+                  ? CrossFadeState.showFirst
+                  : CrossFadeState.showSecond,
+              // Closes the page.
+              firstChild: Icon(
+                Icons.close,
+                semanticLabel: localizations.clear_search,
+              ),
+              // Clears the text.
+              secondChild: Icon(
+                Icons.cancel,
+                semanticLabel: localizations.clear_search,
+              ),
+            ),
+          ),
         ),
       ),
     );

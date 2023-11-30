@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:openfoodfacts/openfoodfacts.dart';
 import 'package:provider/provider.dart';
 import 'package:smooth_app/cards/category_cards/abstract_cache.dart';
-import 'package:smooth_app/data_models/user_preferences.dart';
+import 'package:smooth_app/cards/category_cards/svg_cache.dart';
+import 'package:smooth_app/data_models/preferences/user_preferences.dart';
 import 'package:smooth_app/generic_lib/design_constants.dart';
 import 'package:smooth_app/helpers/extension_on_text_helper.dart';
 import 'package:smooth_app/helpers/ui_helpers.dart';
@@ -74,40 +75,44 @@ class KnowledgePanelTitleCard extends StatelessWidget {
         top: VERY_SMALL_SPACE,
         bottom: VERY_SMALL_SPACE,
       ),
-      child: Row(
-        children: <Widget>[
-          ...iconWidget,
-          Expanded(
-            flex: IconWidgetSizer.getRemainingWidgetFlex(),
-            child: LayoutBuilder(
-              builder: (BuildContext context, BoxConstraints constraints) {
-                return Wrap(
-                  direction: Axis.vertical,
-                  children: <Widget>[
-                    SizedBox(
-                      width: constraints.maxWidth,
-                      child: Text(
-                        knowledgePanelTitleElement.title,
-                        style: TextStyle(color: colorFromEvaluation),
-                      ),
-                    ),
-                    if (knowledgePanelTitleElement.subtitle != null)
+      child: Semantics(
+        value: _generateSemanticsValue(context),
+        button: isClickable,
+        excludeSemantics: true,
+        child: Row(
+          children: <Widget>[
+            ...iconWidget,
+            Expanded(
+              flex: IconWidgetSizer.getRemainingWidgetFlex(),
+              child: LayoutBuilder(
+                builder: (BuildContext context, BoxConstraints constraints) {
+                  return Wrap(
+                    direction: Axis.vertical,
+                    children: <Widget>[
                       SizedBox(
                         width: constraints.maxWidth,
                         child: Text(
-                          knowledgePanelTitleElement.subtitle!,
-                          style:
-                              WellSpacedTextHelper.TEXT_STYLE_WITH_WELL_SPACED,
-                        ).selectable(),
+                          knowledgePanelTitleElement.title,
+                          style: TextStyle(color: colorFromEvaluation),
+                        ),
                       ),
-                  ],
-                );
-              },
+                      if (knowledgePanelTitleElement.subtitle != null)
+                        SizedBox(
+                          width: constraints.maxWidth,
+                          child: Text(
+                            knowledgePanelTitleElement.subtitle!,
+                            style: WellSpacedTextHelper
+                                .TEXT_STYLE_WITH_WELL_SPACED,
+                          ).selectable(isSelectable: !isClickable),
+                        ),
+                    ],
+                  );
+                },
+              ),
             ),
-          ),
-          if (isClickable)
             if (isClickable) Icon(ConstantIcons.instance.getForwardIcon()),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -155,5 +160,26 @@ class KnowledgePanelTitleCard extends StatelessWidget {
       case Evaluation.UNKNOWN:
         return null;
     }
+  }
+
+  String _generateSemanticsValue(BuildContext context) {
+    final StringBuffer buffer = StringBuffer();
+
+    if (knowledgePanelTitleElement.iconUrl != null) {
+      final String? label = SvgCache.getSemanticsLabel(
+        context,
+        knowledgePanelTitleElement.iconUrl!,
+      );
+      if (label != null) {
+        buffer.write('$label: ');
+      }
+    }
+
+    buffer.write(knowledgePanelTitleElement.title);
+    if (knowledgePanelTitleElement.subtitle != null) {
+      buffer.write('\n${knowledgePanelTitleElement.subtitle}');
+    }
+
+    return buffer.toString();
   }
 }

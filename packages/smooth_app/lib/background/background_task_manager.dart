@@ -2,9 +2,11 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/rendering.dart';
-import 'package:smooth_app/background/abstract_background_task.dart';
+import 'package:smooth_app/background/background_task.dart';
 import 'package:smooth_app/background/background_task_image.dart';
 import 'package:smooth_app/background/background_task_refresh_later.dart';
+import 'package:smooth_app/background/operation_type.dart';
+import 'package:smooth_app/data_models/login_result.dart';
 import 'package:smooth_app/database/dao_instant_string.dart';
 import 'package:smooth_app/database/dao_int.dart';
 import 'package:smooth_app/database/dao_string_list.dart';
@@ -13,9 +15,14 @@ import 'package:smooth_app/services/smooth_services.dart';
 
 /// Management of background tasks: single thread, block, restart, display.
 class BackgroundTaskManager {
-  BackgroundTaskManager(this.localDatabase);
+  BackgroundTaskManager._(this.localDatabase);
 
   final LocalDatabase localDatabase;
+
+  static BackgroundTaskManager? _instance;
+
+  static BackgroundTaskManager getInstance(final LocalDatabase localDatabase) =>
+      _instance ??= BackgroundTaskManager._(localDatabase);
 
   /// Returns [DaoInstantString] key for tasks.
   static String _taskIdToDaoInstantStringKey(final String taskId) =>
@@ -26,7 +33,7 @@ class BackgroundTaskManager {
       'taskError:$taskId';
 
   /// Adds a task to the pending task list.
-  Future<void> add(final AbstractBackgroundTask task) async {
+  Future<void> add(final BackgroundTask task) async {
     final String taskId = task.uniqueId;
     await DaoInstantString(localDatabase).put(
       _taskIdToDaoInstantStringKey(taskId),
@@ -48,7 +55,7 @@ class BackgroundTaskManager {
     final String taskId, {
     final bool success = false,
   }) async {
-    final AbstractBackgroundTask? task = _get(taskId);
+    final BackgroundTask? task = _get(taskId);
     if (task != null) {
       await task.postExecute(localDatabase, success);
     }
@@ -61,7 +68,7 @@ class BackgroundTaskManager {
   }
 
   /// Returns the related task, or null but that is unexpected.
-  AbstractBackgroundTask? _get(final String taskId) {
+  BackgroundTask? _get(final String taskId) {
     try {
       final String? json = DaoInstantString(localDatabase)
           .get(_taskIdToDaoInstantStringKey(taskId));
@@ -70,11 +77,16 @@ class BackgroundTaskManager {
         return null;
       }
       final Map<String, dynamic> map = jsonDecode(json) as Map<String, dynamic>;
-      return AbstractBackgroundTask.fromJson(map);
+      final String processName = BackgroundTask.getProcessName(map);
+      for (final OperationType operationType in OperationType.values) {
+        if (processName == operationType.processName) {
+          return operationType.fromJson(map);
+        }
+      }
     } catch (e) {
       // unexpected
-      return null;
     }
+    return null;
   }
 
   /// [DaoInt] key we use to store the latest start timestamp.
@@ -89,28 +101,32 @@ class BackgroundTaskManager {
   /// Minimum duration in millis between each run.
   static const int _minimumDurationBetweenRuns = 5 * 1000;
 
-  /// Returns true if we can run now.
-  ///
-  /// Will also set the "latest start timestamp".
-  /// With this, we can detect a run that went wrong.
-  /// Like, still running 1 hour later.
-  Future<bool> _canStartNow() async {
+  /// Returns the "now" timestamp if we can run now, or `null`.
+  int? _canStartNow() {
     final DaoInt daoInt = DaoInt(localDatabase);
     final int now = LocalDatabase.nowInMillis();
     final int? latestRunStart = daoInt.get(_lastStartTimestampKey);
     final int? latestRunStop = daoInt.get(_lastStopTimestampKey);
+    if (_running) {
+      // if pretending to be running but started a very very long time ago
+      if (latestRunStart != null &&
+          latestRunStart + _aLongEnoughTimeInMilliseconds < now) {
+        // we assume we can run now.
+        return now;
+      }
+      return null;
+    }
     // if the last run stopped correctly or was started a long time ago.
     if (latestRunStart == null ||
         latestRunStart + _aLongEnoughTimeInMilliseconds < now) {
       // if the last run stopped not enough time ago.
       if (latestRunStop != null &&
           latestRunStop + _minimumDurationBetweenRuns >= now) {
-        return false;
+        return null;
       }
-      await daoInt.put(_lastStartTimestampKey, now);
-      return true;
+      return now;
     }
-    return false;
+    return null;
   }
 
   /// Signals we've just finished working and that we're ready for a new run.
@@ -122,6 +138,8 @@ class BackgroundTaskManager {
     );
   }
 
+  bool _running = false;
+
   /// Runs all the pending tasks, and then smoothly ends.
   ///
   /// If a task fails, we continue with the other tasks: and we'll retry the
@@ -130,45 +148,49 @@ class BackgroundTaskManager {
   /// we can remove the failed task from the list: it would have been
   /// overwritten anyway.
   Future<void> run() async {
-    if (!await _canStartNow()) {
+    final int? now = _canStartNow();
+    if (now == null) {
       return;
     }
-    final List<AbstractBackgroundTask> tasks = await _getAllTasks();
-    for (final AbstractBackgroundTask task in tasks) {
-      await task.recover(localDatabase);
-    }
-    final Map<String, String> failedTaskFromStamps = <String, String>{};
-    for (final AbstractBackgroundTask task in tasks) {
-      final String stamp = task.stamp;
-      final String taskId = task.uniqueId;
-      final String? previousFailedTaskId = failedTaskFromStamps[stamp];
-      if (previousFailedTaskId != null) {
-        // there was a similar task that failed previously and we can dismiss it
-        // as the current one would overwrite it.
-        // not only will we spare a to-be-overwritten call, but we avoid the
-        // "save latest change" and then "save initial change" dilemma.
-        _debugPrint('removing failed task $previousFailedTaskId');
-        await _finishTask(previousFailedTaskId);
-        failedTaskFromStamps.remove(stamp);
+    _running = true;
+
+    ///
+    /// Will also set the "latest start timestamp".
+    /// With this, we can detect a run that went wrong.
+    /// Like, still running 1 hour later.
+    final DaoInt daoInt = DaoInt(localDatabase);
+    await daoInt.put(_lastStartTimestampKey, now);
+    bool runAgain = true;
+    while (runAgain) {
+      runAgain = false;
+      final List<BackgroundTask> tasks = await _getAllTasks();
+      for (final BackgroundTask task in tasks) {
+        await task.recover(localDatabase);
       }
-      try {
-        await _setTaskErrorStatus(taskId, taskStatusStarted);
-        await task.execute(localDatabase);
-        await _finishTask(taskId, success: true);
-      } catch (e) {
-        // Most likely, no internet, no reason to go on.
-        if (e.toString().startsWith('Failed host lookup: ')) {
-          await _setTaskErrorStatus(taskId, taskStatusNoInternet);
-          await _justFinished();
-          return;
+      for (final BackgroundTask task in tasks) {
+        final String taskId = task.uniqueId;
+        try {
+          await _setTaskErrorStatus(taskId, taskStatusStarted);
+          await task.execute(localDatabase);
+          await _finishTask(taskId, success: true);
+          if (task.hasImmediateNextTask) {
+            runAgain = true;
+          }
+        } catch (e) {
+          // Most likely, no internet, no reason to go on.
+          if (LoginResult.isNoNetworkException(e.toString())) {
+            await _setTaskErrorStatus(taskId, taskStatusNoInternet);
+            await _justFinished();
+            return;
+          }
+          debugPrint('Background task error ($e)');
+          Logs.e('Background task error', ex: e);
+          await _setTaskErrorStatus(taskId, '$e');
         }
-        debugPrint('Background task error ($e)');
-        Logs.e('Background task error', ex: e);
-        failedTaskFromStamps[stamp] = taskId;
-        await _setTaskErrorStatus(taskId, '$e');
       }
+      await _justFinished();
     }
-    await _justFinished();
+    _running = false;
   }
 
   Future<void> _setTaskErrorStatus(
@@ -221,16 +243,16 @@ class BackgroundTaskManager {
   /// We put in the list:
   /// * tasks that are not delayed (e.g. [BackgroundTaskRefreshLater])
   /// * only the latest task for a given stamp (except for OTHER uploads)
-  Future<List<AbstractBackgroundTask>> _getAllTasks() async {
+  Future<List<BackgroundTask>> _getAllTasks() async {
     _debugPrint('get all tasks/0');
-    final List<AbstractBackgroundTask> result = <AbstractBackgroundTask>[];
+    final List<BackgroundTask> result = <BackgroundTask>[];
     final List<String> list = localDatabase.getAllTaskIds();
     final List<String> removeTaskIds = <String>[];
     if (list.isEmpty) {
       return result;
     }
     for (final String taskId in list) {
-      final AbstractBackgroundTask? task = _get(taskId);
+      final BackgroundTask? task = _get(taskId);
       if (task == null) {
         // unexpected, but let's remove that null task anyway.
         _debugPrint('get all tasks/unexpected/$taskId');
@@ -272,7 +294,7 @@ class BackgroundTaskManager {
     }
     _debugPrint('get all tasks returned (begin)');
     int i = 0;
-    for (final AbstractBackgroundTask task in result) {
+    for (final BackgroundTask task in result) {
       _debugPrint('* task #${i++}: ${task.uniqueId} / ${task.stamp}');
     }
     _debugPrint('get all tasks returned (end)');

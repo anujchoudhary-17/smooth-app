@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:iso_countries/iso_countries.dart';
@@ -16,6 +15,7 @@ import 'package:smooth_app/generic_lib/buttons/smooth_large_button_with_icon.dar
 import 'package:smooth_app/generic_lib/design_constants.dart';
 import 'package:smooth_app/generic_lib/duration_constants.dart';
 import 'package:smooth_app/generic_lib/loading_dialog.dart';
+import 'package:smooth_app/generic_lib/widgets/images/smooth_image.dart';
 import 'package:smooth_app/generic_lib/widgets/smooth_back_button.dart';
 import 'package:smooth_app/generic_lib/widgets/smooth_card.dart';
 import 'package:smooth_app/generic_lib/widgets/smooth_error_card.dart';
@@ -24,19 +24,24 @@ import 'package:smooth_app/pages/personalized_ranking_page.dart';
 import 'package:smooth_app/pages/product/common/product_list_item_simple.dart';
 import 'package:smooth_app/pages/product/common/product_query_page_helper.dart';
 import 'package:smooth_app/query/paged_product_query.dart';
+import 'package:smooth_app/resources/app_animations.dart';
 import 'package:smooth_app/widgets/ranking_floating_action_button.dart';
+import 'package:smooth_app/widgets/smooth_app_bar.dart';
 import 'package:smooth_app/widgets/smooth_scaffold.dart';
+import 'package:smooth_app/widgets/smooth_text.dart';
 
 class ProductQueryPage extends StatefulWidget {
   const ProductQueryPage({
     required this.productListSupplier,
     required this.name,
     required this.editableAppBarTitle,
+    this.searchResult = true,
   });
 
   final ProductListSupplier productListSupplier;
   final String name;
   final bool editableAppBarTitle;
+  final bool searchResult;
 
   @override
   State<ProductQueryPage> createState() => _ProductQueryPageState();
@@ -53,10 +58,7 @@ class _ProductQueryPageState extends State<ProductQueryPage>
   late final OpenFoodFactsCountry? _country;
 
   @override
-  String get traceTitle => 'search_page';
-
-  @override
-  String get traceName => 'Opened search_page';
+  String get actionName => 'Opened search_page';
 
   @override
   void initState() {
@@ -70,11 +72,15 @@ class _ProductQueryPageState extends State<ProductQueryPage>
         if (_scrollController.offset >= 400) {
           if (!_showBackToTopButton) {
             _showBackToTopButton = true;
-            setState(() {});
+            if (mounted) {
+              setState(() {});
+            }
           }
         } else if (_showBackToTopButton) {
           _showBackToTopButton = false;
-          setState(() {});
+          if (mounted) {
+            setState(() {});
+          }
         }
       });
   }
@@ -106,10 +112,8 @@ class _ProductQueryPageState extends State<ProductQueryPage>
             );
           case LoadingStatus.LOADING:
             if (_model.isEmpty()) {
-              return _EmptyScreen(
-                screenSize: screenSize,
-                name: widget.name,
-                emptiness: const CircularProgressIndicator.adaptive(),
+              return _LoadingScreen(
+                title: widget.name,
               );
             }
             break;
@@ -117,7 +121,6 @@ class _ProductQueryPageState extends State<ProductQueryPage>
             if (_model.isEmpty()) {
               // TODO(monsieurtanuki): should be tracked as well, shouldn't it?
               return _EmptyScreen(
-                screenSize: screenSize,
                 name: widget.name,
                 emptiness: _getEmptyText(
                   themeData,
@@ -150,107 +153,118 @@ class _ProductQueryPageState extends State<ProductQueryPage>
     final ThemeData themeData,
     final AppLocalizations appLocalizations,
   ) =>
-      SmoothScaffold(
-        floatingActionButton: Row(
-          mainAxisAlignment: _showBackToTopButton
-              ? MainAxisAlignment.spaceBetween
-              : MainAxisAlignment.center,
-          children: <Widget>[
-            RankingFloatingActionButton(
-              onPressed: () => Navigator.push<Widget>(
-                context,
-                MaterialPageRoute<Widget>(
-                  builder: (BuildContext context) => PersonalizedRankingPage(
-                    barcodes: _model.displayBarcodes,
-                    title: widget.name,
-                  ),
-                ),
-              ),
-            ),
-            Visibility(
-              visible: _showBackToTopButton,
-              child: AnimatedOpacity(
-                duration: SmoothAnimationsDuration.short,
-                opacity: _showBackToTopButton ? 1.0 : 0.0,
-                child: SmoothRevealAnimation(
-                  animationCurve: Curves.easeInOutBack,
-                  startOffset: const Offset(0.0, 1.0),
-                  child: Padding(
-                    padding: const EdgeInsetsDirectional.only(
-                      start: SMALL_SPACE,
-                    ),
-                    child: FloatingActionButton(
-                      backgroundColor: themeData.colorScheme.secondary,
-                      onPressed: () {
-                        _scrollToTop();
-                      },
-                      tooltip: appLocalizations.go_back_to_top,
-                      child: Icon(
-                        Icons.arrow_upward,
-                        color: themeData.colorScheme.onSecondary,
+      SmoothSharedAnimationController(
+        child: SmoothScaffold(
+          floatingActionButton: Row(
+            mainAxisAlignment: _showBackToTopButton
+                ? MainAxisAlignment.spaceBetween
+                : MainAxisAlignment.center,
+            children: <Widget>[
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 5.0),
+                child: RankingFloatingActionButton(
+                  onPressed: () => Navigator.push<Widget>(
+                    context,
+                    MaterialPageRoute<Widget>(
+                      builder: (BuildContext context) =>
+                          PersonalizedRankingPage(
+                        barcodes: _model.displayBarcodes,
+                        title: widget.name,
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
-        ),
-        appBar: AppBar(
-          backgroundColor: themeData.scaffoldBackgroundColor,
-          elevation: 2,
-          automaticallyImplyLeading: false,
-          leading: const SmoothBackButton(),
-          title: _AppBarTitle(
-            name: widget.name,
-            editableAppBarTitle: widget.editableAppBarTitle,
+              Visibility(
+                visible: _showBackToTopButton,
+                child: AnimatedOpacity(
+                  duration: SmoothAnimationsDuration.short,
+                  opacity: _showBackToTopButton ? 1.0 : 0.0,
+                  child: SmoothRevealAnimation(
+                    animationCurve: Curves.easeInOutBack,
+                    startOffset: const Offset(0.0, 1.0),
+                    child: Padding(
+                      padding: const EdgeInsetsDirectional.only(
+                        start: SMALL_SPACE,
+                      ),
+                      child: FloatingActionButton(
+                        backgroundColor: themeData.colorScheme.secondary,
+                        onPressed: () {
+                          _scrollToTop();
+                        },
+                        tooltip: appLocalizations.go_back_to_top,
+                        child: Icon(
+                          Icons.arrow_upward,
+                          color: themeData.colorScheme.onSecondary,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-          actions: _getAppBarButtons(),
-        ),
-        body: RefreshIndicator(
-          onRefresh: () async => _refreshList(),
-          child: ListView.builder(
-            controller: _scrollController,
-            // To allow refresh even when not the whole page is filled
-            physics: const AlwaysScrollableScrollPhysics(),
-            itemBuilder: (BuildContext context, int index) {
-              if (index == 0) {
-                // on top, a message
-                return _getTopMessagesCard();
-              }
-              index--;
-
-              final int barcodesCount = _model.displayBarcodes.length;
-
-              // TODO(monsieurtanuki): maybe call it earlier, like for first unknown page index - 5?
-              if (index >= barcodesCount) {
-                _downloadNextPage();
-              }
-
-              if (index >= barcodesCount) {
-                // When scrolling below the last loaded item (index > barcodesCount)
-                // We first show a [SmoothProductCardTemplate]
-                // and after that a loading indicator + some space below it as the next item.
-
-                // The amount you scrolled over the index
-                final int overscrollIndex =
-                    index - barcodesCount + 1 - _OVERSCROLL_TEMPLATE_COUNT;
-
-                if (overscrollIndex <= 0) {
-                  return const SmoothProductCardTemplate();
+          appBar: SmoothAppBar(
+            backgroundColor: themeData.scaffoldBackgroundColor,
+            elevation: 2,
+            automaticallyImplyLeading: false,
+            leading: const SmoothBackButton(),
+            title: _AppBarTitle(
+              title: widget.searchResult
+                  ? widget.name
+                  : appLocalizations.product_search_same_category,
+              editableAppBarTitle:
+                  widget.searchResult && widget.editableAppBarTitle,
+              multiLines: !widget.searchResult,
+            ),
+            subTitle: !widget.searchResult ? Text(widget.name) : null,
+            actions: _getAppBarButtons(),
+          ),
+          body: RefreshIndicator(
+            onRefresh: () async => _refreshList(),
+            child: ListView.builder(
+              controller: _scrollController,
+              // To allow refresh even when not the whole page is filled
+              physics: const AlwaysScrollableScrollPhysics(),
+              itemBuilder: (BuildContext context, int index) {
+                if (index == 0) {
+                  // on top, a message
+                  return _getTopMessagesCard();
                 }
-                if (overscrollIndex == 1) {
-                  return const Center(child: CircularProgressIndicator());
+                index--;
+
+                final int barcodesCount = _model.displayBarcodes.length;
+
+                // TODO(monsieurtanuki): maybe call it earlier, like for first unknown page index - 5?
+                if (index >= barcodesCount) {
+                  _downloadNextPage();
                 }
-                return SizedBox(
-                  height: MediaQuery.of(context).size.height / 4,
+
+                if (index >= barcodesCount) {
+                  // When scrolling below the last loaded item (index > barcodesCount)
+                  // We first show a [SmoothProductCardTemplate]
+                  // and after that a loading indicator + some space below it as the next item.
+
+                  // The amount you scrolled over the index
+                  final int overscrollIndex =
+                      index - barcodesCount + 1 - _OVERSCROLL_TEMPLATE_COUNT;
+
+                  if (overscrollIndex <= 0) {
+                    return const SmoothProductCardTemplate();
+                  }
+                  if (overscrollIndex == 1) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  return SizedBox(
+                    height: MediaQuery.of(context).size.height / 4,
+                  );
+                }
+                return ProductListItemSimple(
+                  barcode: _model.displayBarcodes[index],
                 );
-              }
-              return ProductListItemSimple(
-                barcode: _model.displayBarcodes[index],
-              );
-            },
-            itemCount: _getItemCount(),
+              },
+              itemCount: _getItemCount(),
+            ),
           ),
         ),
       );
@@ -275,7 +289,6 @@ class _ProductQueryPageState extends State<ProductQueryPage>
     final String errorMessage,
   ) {
     return _EmptyScreen(
-      screenSize: screenSize,
       name: widget.name,
       emptiness: Padding(
         padding: const EdgeInsets.all(SMALL_SPACE),
@@ -376,7 +389,7 @@ class _ProductQueryPageState extends State<ProductQueryPage>
     }
     final String locale = Localizations.localeOf(context).languageCode;
     final List<Country> localizedCountries =
-        await IsoCountries.iso_countries_for_locale(locale);
+        await IsoCountries.isoCountriesForLocale(locale);
     for (final Country country in localizedCountries) {
       if (country.countryCode.toLowerCase() == _country!.offTag.toLowerCase()) {
         return country.name;
@@ -413,8 +426,11 @@ class _ProductQueryPageState extends State<ProductQueryPage>
         ),
       );
 
-  void retryConnection() =>
+  void retryConnection() {
+    if (mounted) {
       setState(() => _model = _getModel(widget.productListSupplier));
+    }
+  }
 
   ProductQueryModel _getModel(final ProductListSupplier supplier) =>
       ProductQueryModel(supplier);
@@ -424,15 +440,19 @@ class _ProductQueryPageState extends State<ProductQueryPage>
     try {
       successfullyLoaded = await _model.loadFromTop();
     } catch (e) {
-      await LoadingDialog.error(
-        context: context,
-        title: _model.loadingError,
-      );
+      if (mounted) {
+        await LoadingDialog.error(
+          context: context,
+          title: _model.loadingError,
+        );
+      }
     } finally {
       if (successfullyLoaded) {
         _scrollToTop(instant: true);
       }
-      setState(() {});
+      if (mounted) {
+        setState(() {});
+      }
     }
   }
 
@@ -460,7 +480,9 @@ class _ProductQueryPageState extends State<ProductQueryPage>
     try {
       final bool result = await _model.loadNextPage();
       if (result) {
-        setState(() {});
+        if (mounted) {
+          setState(() {});
+        }
       }
     } catch (e) {
       //
@@ -471,14 +493,12 @@ class _ProductQueryPageState extends State<ProductQueryPage>
 
 class _EmptyScreen extends StatelessWidget {
   const _EmptyScreen({
-    required this.screenSize,
     required this.name,
     required this.emptiness,
     this.actions,
     Key? key,
   }) : super(key: key);
 
-  final Size screenSize;
   final String name;
   final Widget emptiness;
   final List<Widget>? actions;
@@ -490,7 +510,7 @@ class _EmptyScreen extends StatelessWidget {
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         leading: const SmoothBackButton(),
         title: _AppBarTitle(
-          name: name,
+          title: name,
           editableAppBarTitle: false,
         ),
         actions: actions,
@@ -502,31 +522,36 @@ class _EmptyScreen extends StatelessWidget {
 
 class _AppBarTitle extends StatelessWidget {
   const _AppBarTitle({
-    required this.name,
+    required this.title,
+    this.multiLines = true,
     required this.editableAppBarTitle,
     Key? key,
   }) : super(key: key);
 
-  final String name;
+  final String title;
+  final bool multiLines;
   final bool editableAppBarTitle;
 
   @override
   Widget build(BuildContext context) {
-    final Widget child = AutoSizeText(
-      name,
-      maxLines: 2,
+    final Widget child = Text(
+      title,
+      maxLines: multiLines ? 2 : 1,
     );
 
     if (editableAppBarTitle) {
       final AppLocalizations appLocalizations = AppLocalizations.of(context);
 
-      return GestureDetector(
+      return InkWell(
         onTap: () {
           Navigator.of(context).pop(ProductQueryPageResult.editProductQuery);
         },
         child: Tooltip(
           message: appLocalizations.tap_to_edit_search,
-          child: child,
+          child: SizedBox(
+            width: double.infinity,
+            child: child,
+          ),
         ),
       );
     } else {
@@ -551,4 +576,39 @@ class _Action {
 enum ProductQueryPageResult {
   editProductQuery,
   unknown,
+}
+
+class _LoadingScreen extends StatelessWidget {
+  const _LoadingScreen({
+    required this.title,
+  });
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    final AppLocalizations appLocalizations = AppLocalizations.of(context);
+
+    return _EmptyScreen(
+      name: title,
+      emptiness: FractionallySizedBox(
+        widthFactor: 0.75,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            SearchEyeAnimation(
+              size: MediaQuery.sizeOf(context).width * 0.2,
+            ),
+            const SizedBox(height: VERY_LARGE_SPACE * 2),
+            TextHighlighter(
+              text: appLocalizations.product_search_loading_message(title),
+              filter: title,
+              softWrap: true,
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

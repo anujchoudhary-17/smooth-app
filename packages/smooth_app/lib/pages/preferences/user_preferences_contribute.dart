@@ -6,30 +6,29 @@ import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:smooth_app/data_models/github_contributors_model.dart';
-import 'package:smooth_app/data_models/user_preferences.dart';
+import 'package:smooth_app/data_models/preferences/user_preferences.dart';
 import 'package:smooth_app/database/local_database.dart';
 import 'package:smooth_app/generic_lib/design_constants.dart';
 import 'package:smooth_app/generic_lib/dialogs/smooth_alert_dialog.dart';
 import 'package:smooth_app/helpers/launch_url_helper.dart';
 import 'package:smooth_app/pages/hunger_games/question_page.dart';
 import 'package:smooth_app/pages/preferences/abstract_user_preferences.dart';
-import 'package:smooth_app/pages/preferences/user_preferences_dev_mode.dart';
+import 'package:smooth_app/pages/preferences/user_preferences_item.dart';
 import 'package:smooth_app/pages/preferences/user_preferences_list_tile.dart';
 import 'package:smooth_app/pages/preferences/user_preferences_page.dart';
 import 'package:smooth_app/pages/preferences/user_preferences_widgets.dart';
 import 'package:smooth_app/pages/product/common/product_query_page_helper.dart';
 import 'package:smooth_app/query/paged_to_be_completed_product_query.dart';
+import 'package:smooth_app/query/product_query.dart';
 
 /// Display of "Contribute" for the preferences page.
 class UserPreferencesContribute extends AbstractUserPreferences {
   UserPreferencesContribute({
-    required final Function(Function()) setState,
     required final BuildContext context,
     required final UserPreferences userPreferences,
     required final AppLocalizations appLocalizations,
     required final ThemeData themeData,
   }) : super(
-          setState: setState,
           context: context,
           userPreferences: userPreferences,
           appLocalizations: appLocalizations,
@@ -37,13 +36,10 @@ class UserPreferencesContribute extends AbstractUserPreferences {
         );
 
   @override
-  PreferencePageType? getPreferencePageType() => PreferencePageType.CONTRIBUTE;
+  PreferencePageType getPreferencePageType() => PreferencePageType.CONTRIBUTE;
 
   @override
   String getTitleString() => appLocalizations.contribute;
-
-  @override
-  Widget? getSubtitle() => null;
 
   @override
   IconData getLeadingIconData() => Icons.emoji_people;
@@ -55,51 +51,70 @@ class UserPreferencesContribute extends AbstractUserPreferences {
   Color? getHeaderColor() => const Color(0xFFFFF2DF);
 
   @override
-  List<Widget> getBody() {
-    final bool hungerGamesEnabled = userPreferences
-            .getFlag(UserPreferencesDevMode.userPreferencesFlagHungerGames) ??
-        false;
-
-    return <Widget>[
-      _getListTile(
-        'Hunger Games',
-        () => _hungerGames(),
-        Icons.games,
-        showed: hungerGamesEnabled,
-      ),
-      _getListTile(
-        appLocalizations.contribute_improve_header,
-        () => _contribute(),
-        Icons.data_saver_on,
-      ),
-      _getListTile(
-        appLocalizations.contribute_sw_development,
-        () => _develop(),
-        Icons.app_shortcut,
-      ),
-      _getListTile(
-        appLocalizations.contribute_translate_header,
-        () => _translate(),
-        Icons.translate,
-      ),
-      _getListTile(
-        appLocalizations.contribute_share_header,
-        () => _share(appLocalizations.contribute_share_content),
-        Icons.adaptive.share,
-      ),
-      _getListTile(
-        appLocalizations.contribute_donate_header,
-        () => _donate(),
-        Icons.volunteer_activism,
-        icon: UserPreferencesListTile.getTintedIcon(Icons.open_in_new, context),
-      ),
-      _getListTile(
-        appLocalizations.contributors,
-        () => _contributors(),
-        Icons.emoji_people,
-      ),
-    ];
-  }
+  List<UserPreferencesItem> getChildren() => <UserPreferencesItem>[
+        _getListTile(
+          'Hunger Games',
+          () async => _hungerGames(),
+          Icons.games,
+        ),
+        _getListTile(
+          appLocalizations.contribute_improve_header,
+          () async => _contribute(),
+          Icons.data_saver_on,
+        ),
+        _getListTile(
+          appLocalizations.contribute_sw_development,
+          () async => _develop(),
+          Icons.app_shortcut,
+        ),
+        _getListTile(
+          appLocalizations.contribute_translate_header,
+          () async => _translate(),
+          Icons.translate,
+        ),
+        _getListTile(
+          appLocalizations.how_to_contribute,
+          () async => LaunchUrlHelper.launchURL(
+            ProductQuery.replaceSubdomain(
+              'https://world.openfoodfacts.org/contribute',
+            ),
+            false,
+          ),
+          Icons.volunteer_activism_outlined,
+          externalLink: true,
+        ),
+        _getListTile(
+          appLocalizations.contribute_join_skill_pool,
+          () async => LaunchUrlHelper.launchURL(
+            'https://docs.google.com/forms/d/e/1FAIpQLSfGHAn5KxW7ko3_GlDfQpVGKpPAMHMbDvY2IjtxfJSXxKJQ2A/viewform?usp=sf_link',
+            false,
+          ),
+          Icons.group,
+          externalLink: true,
+        ),
+        _getListTile(
+          appLocalizations.contribute_share_header,
+          () async => _share(appLocalizations.contribute_share_content),
+          Icons.adaptive.share,
+        ),
+        _getListTile(
+          appLocalizations.contribute_donate_header,
+          () async => LaunchUrlHelper.launchURL(
+            AppLocalizations.of(context).donate_url,
+            false,
+          ),
+          Icons.volunteer_activism,
+          icon:
+              UserPreferencesListTile.getTintedIcon(Icons.open_in_new, context),
+          externalLink: true,
+        ),
+        _getListTile(
+          appLocalizations.contributors_label,
+          () async => _contributors(),
+          Icons.emoji_people,
+          description: appLocalizations.contributors_description,
+        ),
+      ];
 
   Future<void> _contribute() => showDialog<void>(
         context: context,
@@ -119,14 +134,8 @@ class UserPreferencesContribute extends AbstractUserPreferences {
               ],
             ),
             positiveAction: SmoothActionButton(
-              text: appLocalizations.okay,
-              minWidth: 100,
-              onPressed: () => Navigator.pop(context),
-            ),
-            negativeAction: SmoothActionButton(
               text: AppLocalizations.of(context)
                   .contribute_improve_ProductsToBeCompleted,
-              minWidth: 150,
               onPressed: () async {
                 final LocalDatabase localDatabase =
                     context.read<LocalDatabase>();
@@ -141,8 +150,15 @@ class UserPreferencesContribute extends AbstractUserPreferences {
                 );
               },
             ),
+            negativeAction: SmoothActionButton(
+              onPressed: () {
+                Navigator.of(context, rootNavigator: true).pop('dialog');
+              },
+              text: appLocalizations.close,
+              minWidth: 100,
+            ),
             actionsAxis: Axis.vertical,
-            actionsOrder: SmoothButtonsBarOrder.numerical,
+            actionsOrder: SmoothButtonsBarOrder.auto,
           );
         },
       );
@@ -152,6 +168,7 @@ class UserPreferencesContribute extends AbstractUserPreferences {
         builder: (BuildContext context) {
           final AppLocalizations appLocalizations =
               AppLocalizations.of(context);
+          context.watch<UserPreferences>();
           return SmoothAlertDialog(
             title: appLocalizations.contribute_sw_development,
             body: Column(
@@ -160,34 +177,35 @@ class UserPreferencesContribute extends AbstractUserPreferences {
                 const SizedBox(height: VERY_LARGE_SPACE),
                 Text(appLocalizations.contribute_develop_text_2),
                 const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
-                    TextButton(
-                      onPressed: () => LaunchUrlHelper.launchURL(
-                          'https://slack.openfoodfacts.org/', false),
-                      child: const Text(
-                        'Slack',
-                        style: TextStyle(color: Colors.blue),
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () => LaunchUrlHelper.launchURL(
-                          'https://github.com/openfoodfacts', false),
-                      child: const Text(
-                        'Github',
-                        style: TextStyle(color: Colors.blue),
-                      ),
-                    ),
-                  ],
+                SmoothAlertContentButton(
+                  label: 'Slack',
+                  icon: Icons.open_in_new,
+                  onPressed: () => LaunchUrlHelper.launchURL(
+                      'https://slack.openfoodfacts.org/', false),
+                ),
+                const SizedBox(height: SMALL_SPACE),
+                SmoothAlertContentButton(
+                  label: 'GitHub',
+                  icon: Icons.open_in_new,
+                  onPressed: () => LaunchUrlHelper.launchURL(
+                      'https://github.com/openfoodfacts', false),
                 ),
                 const SizedBox(height: 10),
-                const _DevModeSetting(),
+                UserPreferencesSwitchWidget(
+                  title: appLocalizations.contribute_develop_dev_mode_title,
+                  subtitle:
+                      appLocalizations.contribute_develop_dev_mode_subtitle,
+                  value: userPreferences.devMode != 0,
+                  onChanged: (final bool devMode) async =>
+                      userPreferences.setDevMode(devMode ? 1 : 0),
+                ),
               ],
             ),
-            positiveAction: SmoothActionButton(
-              onPressed: () => Navigator.pop(context),
-              text: appLocalizations.okay,
+            negativeAction: SmoothActionButton(
+              onPressed: () {
+                Navigator.of(context, rootNavigator: true).pop('dialog');
+              },
+              text: appLocalizations.close,
               minWidth: 100,
             ),
           );
@@ -216,42 +234,103 @@ class UserPreferencesContribute extends AbstractUserPreferences {
                   'https://translate.openfoodfacts.org/', false),
               text: appLocalizations.contribute_translate_link_text,
             ),
+            negativeAction: SmoothActionButton(
+              onPressed: () {
+                Navigator.of(context, rootNavigator: true).pop('dialog');
+              },
+              text: appLocalizations.close,
+              minWidth: 100,
+            ),
+            actionsAxis: Axis.vertical,
+            actionsOrder: SmoothButtonsBarOrder.auto,
           );
         },
       );
 
   Future<void> _share(String content) async => Share.share(content);
 
-  Future<void> _donate() async => LaunchUrlHelper.launchURL(
-        AppLocalizations.of(context).donate_url,
-        false,
-      );
-
   Future<void> _contributors() => showDialog<void>(
         context: context,
-        builder: (BuildContext context) {
-          return SmoothAlertDialog(
-            title: AppLocalizations.of(context).contributors,
-            body: FutureBuilder<http.Response>(
-              future: http.get(
-                Uri.https(
-                  'api.github.com',
-                  '/repos/openfoodfacts/smooth-app/contributors',
-                ),
-              ),
-              builder:
-                  (BuildContext context, AsyncSnapshot<http.Response> snap) {
-                if (snap.hasData) {
-                  final List<dynamic> contributors =
-                      jsonDecode(snap.data!.body) as List<dynamic>;
-                  return Wrap(
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: contributors.map((dynamic contributorsData) {
-                      final ContributorsModel contributor =
-                          ContributorsModel.fromJson(
-                              contributorsData as Map<String, dynamic>);
-                      return Padding(
-                        padding: const EdgeInsets.all(5.0),
+        builder: (BuildContext context) => _ContributorsDialog(),
+      );
+
+  Future<void> _hungerGames() async => openQuestionPage(context);
+
+  UserPreferencesItem _getListTile(
+    final String title,
+    final VoidCallback onTap,
+    final IconData leading, {
+    final Icon? icon,
+    final String? description,
+    final bool? externalLink = false,
+  }) {
+    final Widget tile = UserPreferencesListTile(
+      title: Text(title),
+      onTap: onTap,
+      trailing: icon ?? getForwardIcon(),
+      leading: UserPreferencesListTile.getTintedIcon(leading, context),
+      externalLink: externalLink,
+    );
+
+    if (description != null) {
+      return UserPreferencesItemSimple(
+        labels: <String>[title, description],
+        builder: (_) => Semantics(
+          value: title,
+          hint: description,
+          button: true,
+          excludeSemantics: true,
+          child: tile,
+        ),
+      );
+    }
+    return UserPreferencesItemSimple(
+      labels: <String>[title],
+      builder: (_) => tile,
+    );
+  }
+}
+
+class _ContributorsDialog extends StatelessWidget {
+  _ContributorsDialog();
+
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  Widget build(BuildContext context) {
+    final AppLocalizations appLocalizations = AppLocalizations.of(context);
+
+    return SmoothAlertDialog(
+      title: appLocalizations.contributors_dialog_title,
+      body: FutureBuilder<http.Response>(
+        future: http.get(
+          Uri.https(
+            'api.github.com',
+            '/repos/openfoodfacts/smooth-app/contributors',
+          ),
+        ),
+        builder: (BuildContext context, AsyncSnapshot<http.Response> snap) {
+          if (snap.hasData) {
+            final List<dynamic> contributors =
+                jsonDecode(snap.data!.body) as List<dynamic>;
+            return Scrollbar(
+              controller: _scrollController,
+              child: SingleChildScrollView(
+                controller: _scrollController,
+                child: Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: contributors.map((dynamic contributorsData) {
+                    final ContributorsModel contributor =
+                        ContributorsModel.fromJson(
+                            contributorsData as Map<String, dynamic>);
+                    return Padding(
+                      padding: const EdgeInsets.all(5.0),
+                      child: Semantics(
+                        value: appLocalizations
+                            .contributors_dialog_entry_description(
+                          contributor.login,
+                        ),
+                        excludeSemantics: true,
                         child: Tooltip(
                           message: contributor.login,
                           child: InkWell(
@@ -278,75 +357,35 @@ class UserPreferencesContribute extends AbstractUserPreferences {
                             ),
                           ),
                         ),
-                      );
-                    }).toList(growable: false),
-                  );
-                }
+                      ),
+                    );
+                  }).toList(growable: false),
+                ),
+              ),
+            );
+          }
 
-                return const Padding(
-                  padding: EdgeInsets.all(LARGE_SPACE),
-                  child: CircularProgressIndicator.adaptive(),
-                );
-              },
-            ),
-            positiveAction: SmoothActionButton(
-              onPressed: () {
-                Navigator.of(context, rootNavigator: true).pop('dialog');
-              },
-              text: appLocalizations.close,
-              minWidth: 100,
-            ),
-            negativeAction: SmoothActionButton(
-              onPressed: () => LaunchUrlHelper.launchURL(
-                  'https://github.com/openfoodfacts/smooth-app', false),
-              text: AppLocalizations.of(context).contribute,
-              minWidth: 150,
-            ),
-            actionsAxis: Axis.vertical,
-            actionsOrder: SmoothButtonsBarOrder.numerical,
+          return const Padding(
+            padding: EdgeInsets.all(LARGE_SPACE),
+            child: CircularProgressIndicator.adaptive(),
           );
         },
-      );
-
-  Future<void> _hungerGames() async => Navigator.push(
-        context,
-        MaterialPageRoute<QuestionPage>(
-          builder: (_) => const QuestionPage(),
-        ),
-      );
-
-  Widget _getListTile(
-    final String title,
-    final VoidCallback onTap,
-    final IconData leading, {
-    final Icon? icon,
-    final bool showed = true,
-  }) =>
-      showed
-          ? UserPreferencesListTile(
-              title: Text(title),
-              onTap: onTap,
-              trailing: icon ?? getForwardIcon(),
-              leading: UserPreferencesListTile.getTintedIcon(leading, context),
-            )
-          : EMPTY_WIDGET;
-}
-
-class _DevModeSetting extends StatelessWidget {
-  const _DevModeSetting({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    final AppLocalizations appLocalizations = AppLocalizations.of(context);
-    final UserPreferences userPreferences = context.watch<UserPreferences>();
-
-    return UserPreferencesSwitchItem(
-      title: appLocalizations.contribute_develop_dev_mode_title,
-      subtitle: appLocalizations.contribute_develop_dev_mode_subtitle,
-      value: userPreferences.devMode != 0,
-      onChanged: (final bool devMode) async {
-        await userPreferences.setDevMode(devMode ? 1 : 0);
-      },
+      ),
+      positiveAction: SmoothActionButton(
+        onPressed: () => LaunchUrlHelper.launchURL(
+            'https://github.com/openfoodfacts/smooth-app', false),
+        text: AppLocalizations.of(context).contribute,
+        minWidth: 150,
+      ),
+      negativeAction: SmoothActionButton(
+        onPressed: () {
+          Navigator.of(context, rootNavigator: true).pop('dialog');
+        },
+        text: appLocalizations.close,
+        minWidth: 100,
+      ),
+      actionsAxis: Axis.vertical,
+      actionsOrder: SmoothButtonsBarOrder.auto,
     );
   }
 }

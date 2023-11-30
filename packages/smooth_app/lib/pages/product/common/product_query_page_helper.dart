@@ -15,6 +15,7 @@ class ProductQueryPageHelper {
     required final String name,
     required final BuildContext context,
     bool editableAppBarTitle = true,
+    bool searchResult = true,
     EditProductQueryCallback? editQueryCallback,
   }) async {
     final ProductListSupplier supplier =
@@ -22,8 +23,10 @@ class ProductQueryPageHelper {
       productQuery,
       localDatabase,
     );
+    if (!context.mounted) {
+      return;
+    }
     final ProductQueryPageResult? result =
-        // ignore: use_build_context_synchronously
         await Navigator.push<ProductQueryPageResult>(
       context,
       MaterialPageRoute<ProductQueryPageResult>(
@@ -31,6 +34,7 @@ class ProductQueryPageHelper {
           productListSupplier: supplier,
           name: name,
           editableAppBarTitle: editableAppBarTitle,
+          searchResult: searchResult,
         ),
       ),
     );
@@ -79,9 +83,8 @@ class ProductQueryPageHelper {
 
   static String getProductListLabel(
     final ProductList productList,
-    final BuildContext context,
+    final AppLocalizations appLocalizations,
   ) {
-    final AppLocalizations appLocalizations = AppLocalizations.of(context);
     switch (productList.listType) {
       case ProductListType.HTTP_SEARCH_KEYWORDS:
       case ProductListType.HTTP_SEARCH_CATEGORY:

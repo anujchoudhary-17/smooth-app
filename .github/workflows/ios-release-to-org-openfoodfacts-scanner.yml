@@ -3,9 +3,6 @@ name: App Store release to org.openfoodfacts.scanner
 on:
   workflow_call:
     inputs:
-      FLUTTER-CACHE-KEY:
-        required: true
-        type: string
       VERSION_NAME:
         required: true
         type: string
@@ -46,7 +43,7 @@ jobs:
     runs-on: macos-12 #macos-12-xl
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
@@ -60,18 +57,22 @@ jobs:
         run: bundle install
         working-directory: ./packages/smooth_app/android/
       - name: Setup Java JDK
-        uses: actions/setup-java@v3.11.0
+        uses: actions/setup-java@v3.13.0
         with:
           distribution: 'zulu'
           java-version: ${{ env.JAVA_VERSION }}
+
+      # Get the flutter version from ./flutter-version.txt
+      - run: echo "FLUTTER_VERSION=$(cat flutter-version.txt)" >> $GITHUB_OUTPUT
+        id: flutter-version
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           #channel: stable
           cache: true
-          flutter-version: '3.7.12'
-          cache-key: current-stable
+          flutter-version: ${{ steps.flutter-version.outputs.FLUTTER_VERSION }}
+          cache-key: flutter-${{ hashFiles('flutter-version.txt')}}-${{ hashFiles('packages\smooth_app\pubspec.lock')}}
 
       - name: Flutter version    
         run: flutter --version

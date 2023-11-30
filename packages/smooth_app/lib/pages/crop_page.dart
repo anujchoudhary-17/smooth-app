@@ -7,18 +7,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:openfoodfacts/openfoodfacts.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:smooth_app/background/background_task_crop.dart';
 import 'package:smooth_app/background/background_task_image.dart';
+import 'package:smooth_app/background/background_task_upload.dart';
 import 'package:smooth_app/data_models/continuous_scan_model.dart';
 import 'package:smooth_app/database/dao_int.dart';
 import 'package:smooth_app/database/local_database.dart';
 import 'package:smooth_app/generic_lib/design_constants.dart';
+import 'package:smooth_app/generic_lib/dialogs/smooth_alert_dialog.dart';
 import 'package:smooth_app/generic_lib/loading_dialog.dart';
+import 'package:smooth_app/helpers/analytics_helper.dart';
 import 'package:smooth_app/helpers/database_helper.dart';
 import 'package:smooth_app/helpers/image_compute_container.dart';
 import 'package:smooth_app/helpers/image_field_extension.dart';
+import 'package:smooth_app/pages/product/common/product_refresher.dart';
 import 'package:smooth_app/pages/product/edit_image_button.dart';
 import 'package:smooth_app/pages/product/may_exit_page_helper.dart';
 import 'package:smooth_app/widgets/smooth_app_bar.dart';
@@ -32,6 +35,7 @@ class CropPage extends StatefulWidget {
     required this.imageField,
     required this.language,
     required this.initiallyDifferent,
+    required this.isLoggedInMandatory,
     this.imageId,
     this.initialCropRect,
     this.initialRotation,
@@ -53,6 +57,8 @@ class CropPage extends StatefulWidget {
   final Rect? initialCropRect;
 
   final CropRotation? initialRotation;
+
+  final bool isLoggedInMandatory;
 
   @override
   State<CropPage> createState() => _CropPageState();
@@ -164,46 +170,48 @@ class _CropPageState extends State<CropPage> {
                   style: const TextStyle(color: Colors.white),
                 ),
               )
-            : Column(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: <Widget>[
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: <Widget>[
-                      _IconButton(
-                        iconData: Icons.rotate_90_degrees_ccw_outlined,
-                        onPressed: () => setState(
-                          () => _controller.rotateLeft(),
+            : SafeArea(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: <Widget>[
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: <Widget>[
+                        _IconButton(
+                          iconData: Icons.rotate_90_degrees_ccw_outlined,
+                          onPressed: () => setState(
+                            () => _controller.rotateLeft(),
+                          ),
                         ),
-                      ),
-                      _IconButton(
-                        iconData: Icons.rotate_90_degrees_cw_outlined,
-                        onPressed: () => setState(
-                          () => _controller.rotateRight(),
+                        _IconButton(
+                          iconData: Icons.rotate_90_degrees_cw_outlined,
+                          onPressed: () => setState(
+                            () => _controller.rotateRight(),
+                          ),
                         ),
+                      ],
+                    ),
+                    Expanded(
+                      child: CropImage(
+                        controller: _controller,
+                        image: Image.file(widget.inputFile),
+                        minimumImageSize: MINIMUM_TOUCH_SIZE,
+                        gridCornerSize: MINIMUM_TOUCH_SIZE * .75,
+                        touchSize: MINIMUM_TOUCH_SIZE,
+                        paddingSize: MINIMUM_TOUCH_SIZE * .5,
+                        alwaysMove: true,
                       ),
-                    ],
-                  ),
-                  Expanded(
-                    child: CropImage(
-                      controller: _controller,
-                      image: Image.file(widget.inputFile),
-                      minimumImageSize: MINIMUM_TOUCH_SIZE,
-                      gridCornerSize: MINIMUM_TOUCH_SIZE * .75,
-                      touchSize: MINIMUM_TOUCH_SIZE,
-                      paddingSize: MINIMUM_TOUCH_SIZE * .5,
-                      alwaysMove: true,
                     ),
-                  ),
-                  Center(
-                    child: EditImageButton(
-                      iconData: Icons.send,
-                      label: appLocalizations.send_image_button_label,
-                      onPressed: () async => _mayExitPage(saving: true),
+                    Center(
+                      child: EditImageButton(
+                        iconData: Icons.send,
+                        label: appLocalizations.send_image_button_label,
+                        onPressed: () async => _mayExitPage(saving: true),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
       ),
     );
@@ -238,16 +246,79 @@ class _CropPageState extends State<CropPage> {
       maxSize: _screenSize.longestSide,
     );
     setState(() => _progress = appLocalizations.crop_page_action_local);
-    await saveBmp(file: result, source: cropped);
+
+    try {
+      await saveBmp(file: result, source: cropped)
+          .timeout(const Duration(seconds: 10));
+    } catch (e, trace) {
+      AnalyticsHelper.sendException(e, stackTrace: trace);
+      rethrow;
+    }
+
     return result;
   }
 
   Future<File?> _saveFileAndExitTry() async {
+    final AppLocalizations appLocalizations = AppLocalizations.of(context);
+
+    // only for new image upload we have to check the minimum size.
+    if (widget.imageId == null) {
+      // Returns the size of the resulting cropped image.
+      Size getCroppedSize() {
+        switch (_controller.rotation) {
+          case CropRotation.up:
+          case CropRotation.down:
+            return Size(
+              _controller.crop.width * _image.width,
+              _controller.crop.height * _image.height,
+            );
+          case CropRotation.left:
+          case CropRotation.right:
+            return Size(
+              _controller.crop.width * _image.height,
+              _controller.crop.height * _image.width,
+            );
+        }
+      }
+
+      final Size croppedSize = getCroppedSize();
+      if (!BackgroundTaskImage.isPictureBigEnough(
+        croppedSize.width,
+        croppedSize.height,
+      )) {
+        final int width = croppedSize.width.floor();
+        final int height = croppedSize.height.floor();
+        await showDialog<void>(
+          context: context,
+          builder: (BuildContext context) => SmoothAlertDialog(
+            title: appLocalizations.crop_page_too_small_image_title,
+            body: Text(
+              appLocalizations.crop_page_too_small_image_message(
+                ImageHelper.minimumWidth,
+                ImageHelper.minimumHeight,
+                width,
+                height,
+              ),
+            ),
+            actionsAxis: Axis.vertical,
+            positiveAction: SmoothActionButton(
+              text: appLocalizations.okay,
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ),
+        );
+        return null;
+      }
+    }
+
+    if (!mounted) {
+      return null;
+    }
     final LocalDatabase localDatabase = context.read<LocalDatabase>();
     final DaoInt daoInt = DaoInt(localDatabase);
     final int sequenceNumber =
         await getNextSequenceNumber(daoInt, _CROP_PAGE_SEQUENCE_KEY);
-    final Directory directory = await getApplicationSupportDirectory();
+    final Directory directory = await BackgroundTaskUpload.getDirectory();
 
     final File croppedFile = await _getCroppedImageFile(
       directory,
@@ -255,7 +326,7 @@ class _CropPageState extends State<CropPage> {
     );
 
     setState(
-      () => _progress = AppLocalizations.of(context).crop_page_action_server,
+      () => _progress = appLocalizations.crop_page_action_server,
     );
     if (widget.imageId == null) {
       // in this case, it's a brand new picture, with crop parameters.
@@ -268,38 +339,42 @@ class _CropPageState extends State<CropPage> {
         sequenceNumber,
       );
       final Rect cropRect = _getLocalCropRect();
-      await BackgroundTaskImage.addTask(
-        widget.barcode,
-        language: widget.language,
-        imageField: widget.imageField,
-        fullFile: fullFile,
-        croppedFile: croppedFile,
-        rotation: _controller.rotation.degrees,
-        x1: cropRect.left.ceil(),
-        y1: cropRect.top.ceil(),
-        x2: cropRect.right.floor(),
-        y2: cropRect.bottom.floor(),
-        widget: this,
-      );
+      if (context.mounted) {
+        await BackgroundTaskImage.addTask(
+          widget.barcode,
+          language: widget.language,
+          imageField: widget.imageField,
+          fullFile: fullFile,
+          croppedFile: croppedFile,
+          rotation: _controller.rotation.degrees,
+          x1: cropRect.left.ceil(),
+          y1: cropRect.top.ceil(),
+          x2: cropRect.right.floor(),
+          y2: cropRect.bottom.floor(),
+          context: context,
+        );
+      }
     } else {
       // in this case, it's an existing picture, with crop parameters.
       // we let the server do everything: better performance, and no privacy
       // issue here (we're cropping from an allegedly already privacy compliant
       // picture).
       final Rect cropRect = _getServerCropRect();
-      await BackgroundTaskCrop.addTask(
-        widget.barcode,
-        language: widget.language,
-        imageField: widget.imageField,
-        imageId: widget.imageId!,
-        croppedFile: croppedFile,
-        rotation: _controller.rotation.degrees,
-        x1: cropRect.left.ceil(),
-        y1: cropRect.top.ceil(),
-        x2: cropRect.right.floor(),
-        y2: cropRect.bottom.floor(),
-        widget: this,
-      );
+      if (context.mounted) {
+        await BackgroundTaskCrop.addTask(
+          widget.barcode,
+          language: widget.language,
+          imageField: widget.imageField,
+          imageId: widget.imageId!,
+          croppedFile: croppedFile,
+          rotation: _controller.rotation.degrees,
+          x1: cropRect.left.ceil(),
+          y1: cropRect.top.ceil(),
+          x2: cropRect.right.floor(),
+          y2: cropRect.bottom.floor(),
+          context: context,
+        );
+      }
     }
     localDatabase.notifyListeners();
     if (!mounted) {
@@ -312,21 +387,34 @@ class _CropPageState extends State<CropPage> {
     return croppedFile;
   }
 
-  Future<void> _saveFileAndExit() async {
+  Future<bool> _saveFileAndExit() async {
+    if (!await ProductRefresher().checkIfLoggedIn(
+      context,
+      isLoggedInMandatory: widget.isLoggedInMandatory,
+    )) {
+      return false;
+    }
+
     setState(
       () => _progress = AppLocalizations.of(context).crop_page_action_saving,
     );
     try {
       final File? file = await _saveFileAndExitTry();
       _progress = null;
-      if (!mounted) {
-        return;
-      }
       if (file == null) {
-        setState(() {});
+        if (mounted) {
+          setState(() {});
+        }
+        return false;
       } else {
-        Navigator.of(context).pop<File>(file);
+        if (mounted) {
+          Navigator.of(context).pop<File>(file);
+        }
+        return true;
       }
+    } catch (e) {
+      _showErrorDialog();
+      return false;
     } finally {
       _progress = null;
     }
@@ -420,8 +508,7 @@ class _CropPageState extends State<CropPage> {
     }
 
     try {
-      await _saveFileAndExit();
-      return true;
+      return _saveFileAndExit();
     } catch (e) {
       if (mounted) {
         // not likely to happen, but you never know...
@@ -432,6 +519,20 @@ class _CropPageState extends State<CropPage> {
       }
       return false;
     }
+  }
+
+  Future<void> _showErrorDialog() {
+    final AppLocalizations appLocalizations = AppLocalizations.of(context);
+
+    return showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return SmoothSimpleErrorAlertDialog(
+          title: appLocalizations.crop_page_action_local_failed_title,
+          message: appLocalizations.crop_page_action_local_failed_message,
+        );
+      },
+    );
   }
 }
 

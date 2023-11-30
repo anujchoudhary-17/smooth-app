@@ -14,6 +14,7 @@ import 'package:smooth_app/generic_lib/duration_constants.dart';
 import 'package:smooth_app/helpers/product_compatibility_helper.dart';
 import 'package:smooth_app/pages/product/common/product_list_item_simple.dart';
 import 'package:smooth_app/pages/product_list_user_dialog_helper.dart';
+import 'package:smooth_app/widgets/smooth_app_bar.dart';
 import 'package:smooth_app/widgets/smooth_scaffold.dart';
 
 class PersonalizedRankingPage extends StatefulWidget {
@@ -33,10 +34,7 @@ class PersonalizedRankingPage extends StatefulWidget {
 class _PersonalizedRankingPageState extends State<PersonalizedRankingPage>
     with TraceableClientMixin {
   @override
-  String get traceName => 'Opened personalized ranking page'; // optional
-
-  @override
-  String get traceTitle => 'personalized_ranking_page';
+  String get actionName => 'Opened personalized ranking page';
 
   static const int _backgroundAlpha = 51;
 
@@ -95,7 +93,7 @@ class _PersonalizedRankingPageState extends State<PersonalizedRankingPage>
     final AppLocalizations appLocalizations = AppLocalizations.of(context);
 
     return SmoothScaffold(
-      appBar: AppBar(
+      appBar: SmoothAppBar(
         title: Text(widget.title, overflow: TextOverflow.fade),
         actions: <Widget>[
           PopupMenuButton<String>(
@@ -218,10 +216,10 @@ class _PersonalizedRankingPageState extends State<PersonalizedRankingPage>
       Dismissible(
         direction: DismissDirection.endToStart,
         background: Container(
-          alignment: Alignment.centerRight,
-          margin: const EdgeInsets.symmetric(vertical: 14),
+          alignment: AlignmentDirectional.centerEnd,
+          margin: const EdgeInsets.symmetric(vertical: 14.0),
           color: RED_COLOR,
-          padding: const EdgeInsetsDirectional.only(end: 30),
+          padding: const EdgeInsetsDirectional.only(end: 30.0),
           child: const Icon(
             Icons.delete,
             color: Colors.white,

@@ -9,10 +9,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:openfoodfacts/openfoodfacts.dart';
 import 'package:provider/provider.dart';
-import 'package:smooth_app/background/abstract_background_task.dart';
+import 'package:smooth_app/background/background_task_barcode.dart';
 import 'package:smooth_app/background/background_task_refresh_later.dart';
 import 'package:smooth_app/background/background_task_upload.dart';
-import 'package:smooth_app/data_models/operation_type.dart';
+import 'package:smooth_app/background/operation_type.dart';
 import 'package:smooth_app/data_models/up_to_date_changes.dart';
 import 'package:smooth_app/database/local_database.dart';
 import 'package:smooth_app/helpers/image_compute_container.dart';
@@ -38,72 +38,26 @@ class BackgroundTaskImage extends BackgroundTaskUpload {
     required this.fullPath,
   });
 
-  BackgroundTaskImage._fromJson(Map<String, dynamic> json)
-      : this._(
-          processName: json['processName'] as String,
-          uniqueId: json['uniqueId'] as String,
-          barcode: json['barcode'] as String,
-          languageCode: json['languageCode'] as String,
-          user: json['user'] as String,
-          country: json['country'] as String,
-          imageField: json['imageField'] as String,
-          fullPath: json['imagePath'] as String,
-          // dealing with when 'croppedPath' did not exist
-          croppedPath:
-              json['croppedPath'] as String? ?? json['imagePath'] as String,
-          rotationDegrees: json['rotation'] as int? ?? 0,
-          cropX1: json['x1'] as int? ?? 0,
-          cropY1: json['y1'] as int? ?? 0,
-          cropX2: json['x2'] as int? ?? 0,
-          cropY2: json['y2'] as int? ?? 0,
-          // dealing with when 'stamp' did not exist
-          stamp: json.containsKey('stamp')
-              ? json['stamp'] as String
-              : BackgroundTaskUpload.getStamp(
-                  json['barcode'] as String,
-                  json['imageField'] as String,
-                  json['languageCode'] as String,
-                ),
-        );
+  BackgroundTaskImage.fromJson(Map<String, dynamic> json)
+      : fullPath = json[_jsonTagImagePath] as String,
+        super.fromJson(json);
 
-  /// Task ID.
-  static const String _PROCESS_NAME = 'IMAGE_UPLOAD';
+  static const String _jsonTagImagePath = 'imagePath';
 
   static const OperationType _operationType = OperationType.image;
 
   final String fullPath;
 
   @override
-  Map<String, dynamic> toJson() => <String, dynamic>{
-        'processName': processName,
-        'uniqueId': uniqueId,
-        'barcode': barcode,
-        'languageCode': languageCode,
-        'user': user,
-        'country': country,
-        'imageField': imageField,
-        'imagePath': fullPath,
-        'croppedPath': croppedPath,
-        'stamp': stamp,
-        'rotation': rotationDegrees,
-        'x1': cropX1,
-        'y1': cropY1,
-        'x2': cropX2,
-        'y2': cropY2,
-      };
-
-  /// Returns the deserialized background task if possible, or null.
-  static AbstractBackgroundTask? fromJson(final Map<String, dynamic> map) {
-    try {
-      final AbstractBackgroundTask result = BackgroundTaskImage._fromJson(map);
-      if (result.processName == _PROCESS_NAME) {
-        return result;
-      }
-    } catch (e) {
-      //
-    }
-    return null;
+  Map<String, dynamic> toJson() {
+    final Map<String, dynamic> result = super.toJson();
+    result[_jsonTagImagePath] = fullPath;
+    return result;
   }
+
+  // cf. https://github.com/openfoodfacts/smooth-app/issues/4219
+  static bool isPictureBigEnough(final num width, final num height) =>
+      width >= ImageHelper.minimumWidth || height >= ImageHelper.minimumHeight;
 
   /// Adds the background task about uploading a product image.
   static Future<void> addTask(
@@ -117,14 +71,14 @@ class BackgroundTaskImage extends BackgroundTaskUpload {
     required final int y1,
     required final int x2,
     required final int y2,
-    required final State<StatefulWidget> widget,
+    required final BuildContext context,
   }) async {
-    final LocalDatabase localDatabase = widget.context.read<LocalDatabase>();
+    final LocalDatabase localDatabase = context.read<LocalDatabase>();
     final String uniqueId = await _operationType.getNewKey(
       localDatabase,
-      barcode,
+      barcode: barcode,
     );
-    final AbstractBackgroundTask task = _getNewTask(
+    final BackgroundTaskBarcode task = _getNewTask(
       language,
       barcode,
       imageField,
@@ -137,12 +91,19 @@ class BackgroundTaskImage extends BackgroundTaskUpload {
       x2,
       y2,
     );
-    await task.addToManager(localDatabase, widget: widget);
+    if (!context.mounted) {
+      return;
+    }
+    await task.addToManager(localDatabase, context: context);
   }
 
   @override
-  String? getSnackBarMessage(final AppLocalizations appLocalizations) =>
-      appLocalizations.image_upload_queued;
+  (String, AlignmentGeometry)? getFloatingMessage(
+          final AppLocalizations appLocalizations) =>
+      (
+        appLocalizations.image_upload_queued,
+        AlignmentDirectional.topCenter,
+      );
 
   /// Returns a new background task about changing a product.
   static BackgroundTaskImage _getNewTask(
@@ -161,7 +122,7 @@ class BackgroundTaskImage extends BackgroundTaskUpload {
       BackgroundTaskImage._(
         uniqueId: uniqueId,
         barcode: barcode,
-        processName: _PROCESS_NAME,
+        processName: _operationType.processName,
         imageField: imageField.offTag,
         fullPath: fullFile.path,
         croppedPath: croppedFile.path,
@@ -172,7 +133,7 @@ class BackgroundTaskImage extends BackgroundTaskUpload {
         cropY2: cropY2,
         languageCode: language.code,
         user: jsonEncode(ProductQuery.getUser().toJson()),
-        country: ProductQuery.getCountry()!.offTag,
+        country: ProductQuery.getCountry().offTag,
         stamp: BackgroundTaskUpload.getStamp(
           barcode,
           imageField.offTag,
@@ -195,7 +156,7 @@ class BackgroundTaskImage extends BackgroundTaskUpload {
         images: <ProductImage>[_getProductImage()],
       ),
     );
-    putTransientImage(localDatabase);
+    await putTransientImage(localDatabase);
   }
 
   /// Returns a fake value that means: "remove the previous value when merging".
@@ -216,19 +177,19 @@ class BackgroundTaskImage extends BackgroundTaskUpload {
     final LocalDatabase localDatabase,
     final bool success,
   ) async {
-    localDatabase.upToDate.terminate(uniqueId);
+    await super.postExecute(localDatabase, success);
     try {
-      File(fullPath).deleteSync();
+      (await getFile(fullPath)).deleteSync();
     } catch (e) {
       // not likely, but let's not spoil the task for that either.
     }
     try {
-      File(croppedPath).deleteSync();
+      (await getFile(croppedPath)).deleteSync();
     } catch (e) {
       // not likely, but let's not spoil the task for that either.
     }
     try {
-      File(_getCroppedPath()).deleteSync();
+      (await getFile(_getCroppedPath())).deleteSync();
     } catch (e) {
       // possible, but let's not spoil the task for that either.
     }
@@ -263,19 +224,55 @@ class BackgroundTaskImage extends BackgroundTaskUpload {
   /// Conversion factor to `int` from / to UI / background task.
   static const int cropConversionFactor = 1000000;
 
-  /// Returns true if a cropped operation is needed - after having performed it.
-  Future<bool> _crop(final File file) async {
+  /// Returns true if a crop operation is needed - after having performed it.
+  ///
+  /// Returns false if no crop operation is needed.
+  /// Returns null if the image (cropped or not) is too small.
+  Future<bool?> _crop(final File file) async {
+    final ui.Image full =
+        await loadUiImage(await (await getFile(fullPath)).readAsBytes());
     if (cropX1 == 0 &&
         cropY1 == 0 &&
         cropX2 == cropConversionFactor &&
         cropY2 == cropConversionFactor &&
         rotationDegrees == 0) {
+      if (!isPictureBigEnough(full.width, full.height)) {
+        return null;
+      }
       // in that case, no need to crop
       return false;
     }
-    final ui.Image full = await loadUiImage(
-      await File(fullPath).readAsBytes(),
-    );
+
+    Size getCroppedSize() {
+      final Rect cropRect = getResizedRect(
+        Rect.fromLTRB(
+          cropX1.toDouble(),
+          cropY1.toDouble(),
+          cropX2.toDouble(),
+          cropY2.toDouble(),
+        ),
+        1 / cropConversionFactor,
+      );
+      switch (CropRotationExtension.fromDegrees(rotationDegrees)!) {
+        case CropRotation.up:
+        case CropRotation.down:
+          return Size(
+            cropRect.width * full.height,
+            cropRect.height * full.width,
+          );
+        case CropRotation.left:
+        case CropRotation.right:
+          return Size(
+            cropRect.width * full.width,
+            cropRect.height * full.height,
+          );
+      }
+    }
+
+    final Size croppedSize = getCroppedSize();
+    if (!isPictureBigEnough(croppedSize.width, croppedSize.height)) {
+      return null;
+    }
     final ui.Image cropped = await CropController.getCroppedBitmap(
       crop: getResizedRect(
         Rect.fromLTRB(
@@ -303,7 +300,12 @@ class BackgroundTaskImage extends BackgroundTaskUpload {
   Future<void> upload() async {
     final String path;
     final String croppedPath = _getCroppedPath();
-    if (await _crop(File(croppedPath))) {
+    final bool? neededCrop = await _crop(await getFile(croppedPath));
+    if (neededCrop == null) {
+      // TODO(monsieurtanuki): maybe something more refined when we dismiss the picture, like alerting the user, though it's not supposed to happen anymore from upstream.
+      return;
+    }
+    if (neededCrop) {
       path = croppedPath;
     } else {
       path = fullPath;
@@ -319,7 +321,11 @@ class BackgroundTaskImage extends BackgroundTaskUpload {
       imageUri: Uri.parse(path),
     );
 
-    final Status status = await OpenFoodAPIClient.addProductImage(user, image);
+    final Status status = await OpenFoodAPIClient.addProductImage(
+      user,
+      image,
+      uriHelper: uriProductHelper,
+    );
     if (status.status == 'status ok') {
       // successfully uploaded a new picture and set it as field+language
       return;
@@ -335,6 +341,7 @@ class BackgroundTaskImage extends BackgroundTaskUpload {
         imgid: '$imageId',
         angle: ImageAngle.NOON,
         user: user,
+        uriHelper: uriProductHelper,
       );
       if (imageUrl == null) {
         throw Exception('Could not select picture');

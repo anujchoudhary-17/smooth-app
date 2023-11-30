@@ -1,3 +1,4 @@
+import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
@@ -5,60 +6,69 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:matomo_tracker/matomo_tracker.dart';
 import 'package:openfoodfacts/openfoodfacts.dart';
 import 'package:provider/provider.dart';
-import 'package:share_plus/share_plus.dart';
+import 'package:smooth_app/data_models/continuous_scan_model.dart';
+import 'package:smooth_app/data_models/preferences/user_preferences.dart';
 import 'package:smooth_app/data_models/product_list.dart';
+import 'package:smooth_app/data_models/up_to_date_product_list_mixin.dart';
 import 'package:smooth_app/database/dao_product.dart';
 import 'package:smooth_app/database/dao_product_list.dart';
 import 'package:smooth_app/database/local_database.dart';
+import 'package:smooth_app/generic_lib/bottom_sheets/smooth_bottom_sheet.dart';
 import 'package:smooth_app/generic_lib/design_constants.dart';
-import 'package:smooth_app/generic_lib/dialogs/smooth_alert_dialog.dart';
 import 'package:smooth_app/generic_lib/duration_constants.dart';
 import 'package:smooth_app/generic_lib/loading_dialog.dart';
-import 'package:smooth_app/helpers/analytics_helper.dart';
+import 'package:smooth_app/generic_lib/widgets/smooth_responsive.dart';
 import 'package:smooth_app/helpers/app_helper.dart';
 import 'package:smooth_app/helpers/robotoff_insight_helper.dart';
-import 'package:smooth_app/helpers/temp_product_list_share_helper.dart';
-import 'package:smooth_app/pages/inherited_data_manager.dart';
-import 'package:smooth_app/pages/personalized_ranking_page.dart';
+import 'package:smooth_app/pages/all_product_list_modal.dart';
+import 'package:smooth_app/pages/carousel_manager.dart';
+import 'package:smooth_app/pages/preferences/user_preferences_dev_mode.dart';
+import 'package:smooth_app/pages/product/common/product_list_item_popup_items.dart';
 import 'package:smooth_app/pages/product/common/product_list_item_simple.dart';
+import 'package:smooth_app/pages/product/common/product_list_popup_items.dart';
 import 'package:smooth_app/pages/product/common/product_query_page_helper.dart';
+import 'package:smooth_app/pages/product/common/product_refresher.dart';
 import 'package:smooth_app/pages/product_list_user_dialog_helper.dart';
 import 'package:smooth_app/query/product_query.dart';
 import 'package:smooth_app/widgets/smooth_app_bar.dart';
 import 'package:smooth_app/widgets/smooth_scaffold.dart';
-import 'package:url_launcher/url_launcher.dart';
 
+/// Displays the products of a product list, with access to other lists.
 class ProductListPage extends StatefulWidget {
-  const ProductListPage(this.productList);
+  const ProductListPage(
+    this.productList, {
+    this.allowToSwitchBetweenLists = true,
+  });
 
   final ProductList productList;
+  final bool allowToSwitchBetweenLists;
 
   @override
   State<ProductListPage> createState() => _ProductListPageState();
 }
 
 class _ProductListPageState extends State<ProductListPage>
-    with TraceableClientMixin {
-  late ProductList productList;
+    with TraceableClientMixin, UpToDateProductListMixin {
   final Set<String> _selectedBarcodes = <String>{};
   bool _selectionMode = false;
 
-  static const String _popupActionClear = 'clear';
-  static const String _popupActionRename = 'rename';
-  static const String _popupActionOpenInWeb = 'openInWeb';
-  static const String _popupActionShare = 'share';
-
   @override
-  String get traceName => 'Opened list_page';
-
-  @override
-  String get traceTitle => 'list_page';
+  String get actionName => 'Opened list_page';
 
   @override
   void initState() {
     super.initState();
-    productList = widget.productList;
+    initUpToDate(widget.productList, context.read<LocalDatabase>());
   }
+
+  final ProductListPopupItem _rename = ProductListPopupRename();
+  final ProductListPopupItem _clear = ProductListPopupClear();
+  final ProductListPopupItem _openInWeb = ProductListPopupOpenInWeb();
+  final ProductListPopupItem _share = ProductListPopupShare();
+  final ProductListItemPopupItem _deleteItems = ProductListItemPopupDelete();
+  final ProductListItemPopupItem _rankItems = ProductListItemPopupRank();
+  final ProductListItemPopupItem _sideBySideItems =
+      ProductListItemPopupSideBySide();
 
   //returns bool to handle WillPopScope
   Future<bool> _handleUserBacktap() async {
@@ -81,8 +91,22 @@ class _ProductListPageState extends State<ProductListPage>
     final DaoProductList daoProductList = DaoProductList(localDatabase);
     final ThemeData themeData = Theme.of(context);
     final AppLocalizations appLocalizations = AppLocalizations.of(context);
+    final UserPreferences userPreferences = context.watch<UserPreferences>();
+    refreshUpToDate();
+
+    /// If we were on a user list, but it has been deleted, we switch to history
+    if (!daoProductList.exist(productList) &&
+        productList.listType == ProductListType.USER) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => setState(
+            () => productList = ProductList.history(),
+          ));
+
+      return EMPTY_WIDGET;
+    }
+
     final List<String> products = productList.getList();
     final bool dismissible;
+
     switch (productList.listType) {
       case ProductListType.SCAN_SESSION:
       case ProductListType.SCAN_HISTORY:
@@ -108,145 +132,146 @@ class _ProductListPageState extends State<ProductListPage>
               icon: const Icon(CupertinoIcons.barcode),
               label: Text(appLocalizations.product_list_empty_title),
               onPressed: () =>
-                  InheritedDataManager.of(context).resetShowSearchCard(true),
+                  ExternalCarouselManager.read(context).showSearchCard(),
             )
-          : _selectionMode || products.length <= 1
-              ? _CompareProductsButton(
-                  selectedBarcodes: _selectedBarcodes,
-                  barcodes: products,
-                  onComparisonEnded: () {
-                    setState(() => _selectionMode = false);
-                  },
-                )
+          : _selectionMode
+              ? null
               : FloatingActionButton.extended(
                   onPressed: () => setState(() => _selectionMode = true),
-                  label: Text(appLocalizations.compare_products_mode),
-                  icon: const Icon(Icons.compare_arrows),
+                  label: const Text('Multi-select'),
+                  icon: const Icon(Icons.checklist),
                 ),
       appBar: SmoothAppBar(
-        actions: !(enableClear || enableRename)
-            ? null
-            : <Widget>[
-                PopupMenuButton<String>(
-                  onSelected: (final String action) async {
-                    switch (action) {
-                      case _popupActionClear:
-                        await showDialog<bool>(
-                          context: context,
-                          builder: (BuildContext context) {
-                            return SmoothAlertDialog(
-                              body: Text(
-                                productList.listType == ProductListType.USER
-                                    ? appLocalizations.confirm_clear_user_list(
-                                        productList.parameters)
-                                    : appLocalizations.confirm_clear,
-                              ),
-                              positiveAction: SmoothActionButton(
-                                onPressed: () async {
-                                  await daoProductList.clear(productList);
-                                  await daoProductList.get(productList);
-                                  setState(() {});
-                                  if (!mounted) {
-                                    return;
-                                  }
-                                  Navigator.of(context).pop();
-                                },
-                                text: appLocalizations.yes,
-                              ),
-                              negativeAction: SmoothActionButton(
-                                onPressed: () {
-                                  Navigator.of(context).pop();
-                                },
-                                text: appLocalizations.no,
-                              ),
-                            );
-                          },
-                        );
-                        break;
-                      case _popupActionRename:
-                        final ProductList? renamedProductList =
-                            await ProductListUserDialogHelper(daoProductList)
-                                .showRenameUserListDialog(context, productList);
-                        if (renamedProductList == null) {
-                          return;
-                        }
-                        setState(() => productList = renamedProductList);
-                        break;
-                      case _popupActionShare:
-                        final String url =
-                            shareProductList(products).toString();
-
-                        final RenderBox? box =
-                            context.findRenderObject() as RenderBox?;
-                        AnalyticsHelper.trackEvent(AnalyticsEvent.shareList);
-                        Share.share(
-                          appLocalizations.share_product_list_text(url),
-                          sharePositionOrigin:
-                              box!.localToGlobal(Offset.zero) & box.size,
-                        );
-
-                        break;
-                      case _popupActionOpenInWeb:
-                        AnalyticsHelper.trackEvent(AnalyticsEvent.openListWeb);
-                        launchUrl(shareProductList(products));
-                        break;
-                    }
-                  },
-                  itemBuilder: (BuildContext context) =>
-                      <PopupMenuEntry<String>>[
-                    if (enableClear)
-                      PopupMenuItem<String>(
-                        value: _popupActionClear,
-                        child: Text(appLocalizations.user_list_popup_clear),
-                      ),
-                    if (enableRename)
-                      PopupMenuItem<String>(
-                        value: _popupActionRename,
-                        child: Text(appLocalizations.user_list_popup_rename),
-                      ),
-                    PopupMenuItem<String>(
-                      value: _popupActionOpenInWeb,
-                      child: Text(appLocalizations.label_web),
+        centerTitle: false,
+        actions: <Widget>[
+          if (widget.allowToSwitchBetweenLists)
+            IconButton(
+              icon: const Icon(CupertinoIcons.square_list),
+              tooltip: appLocalizations.action_change_list,
+              onPressed: () async {
+                final ProductList? selected =
+                    await showSmoothDraggableModalSheet<ProductList>(
+                  context: context,
+                  header: SmoothModalSheetHeader(
+                    title: appLocalizations.product_list_select,
+                    suffix: SmoothModalSheetHeaderButton(
+                      label: appLocalizations.product_list_create,
+                      prefix: const Icon(Icons.add_circle_outline_sharp),
+                      tooltip: appLocalizations.product_list_create_tooltip,
+                      onTap: () async =>
+                          ProductListUserDialogHelper(daoProductList)
+                              .showCreateUserListDialog(context),
                     ),
-                    PopupMenuItem<String>(
-                      value: _popupActionShare,
-                      child: Text(appLocalizations.share),
-                    ),
-                  ],
-                )
-              ],
-        title: Text(
-          ProductQueryPageHelper.getProductListLabel(productList, context),
-          overflow: TextOverflow.fade,
+                  ),
+                  bodyBuilder: (BuildContext context) => AllProductListModal(
+                    currentList: productList,
+                  ),
+                  initHeight: _computeModalInitHeight(context),
+                );
+
+                if (selected == null) {
+                  return;
+                }
+                if (context.mounted) {
+                  await daoProductList.get(selected);
+                  if (context.mounted) {
+                    setState(() => productList = selected);
+                  }
+                }
+              },
+            ),
+          PopupMenuButton<ProductListPopupItem>(
+            onSelected: (final ProductListPopupItem action) async {
+              final ProductList? differentProductList =
+                  await action.doSomething(
+                productList: productList,
+                localDatabase: localDatabase,
+                context: context,
+              );
+              if (differentProductList != null) {
+                setState(() => productList = differentProductList);
+              }
+            },
+            itemBuilder: (BuildContext context) =>
+                <PopupMenuEntry<ProductListPopupItem>>[
+              if (enableRename) _rename.getMenuItem(appLocalizations),
+              _share.getMenuItem(appLocalizations),
+              _openInWeb.getMenuItem(appLocalizations),
+              if (enableClear) _clear.getMenuItem(appLocalizations),
+            ],
+          ),
+        ],
+        title: AutoSizeText(
+          ProductQueryPageHelper.getProductListLabel(
+            productList,
+            appLocalizations,
+          ),
+          maxLines: 2,
         ),
         actionMode: _selectionMode,
         onLeaveActionMode: () {
           setState(() => _selectionMode = false);
         },
-        actionModeTitle: Text(appLocalizations.compare_products_appbar_title),
-        actionModeSubTitle:
-            Text(appLocalizations.compare_products_appbar_subtitle),
+        actionModeTitle: Text('${_selectedBarcodes.length}'),
+        actionModeActions: <Widget>[
+          PopupMenuButton<ProductListItemPopupItem>(
+            onSelected: (final ProductListItemPopupItem action) async {
+              final bool andThenSetState = await action.doSomething(
+                productList: productList,
+                localDatabase: localDatabase,
+                context: context,
+                selectedBarcodes: _selectedBarcodes,
+              );
+              if (andThenSetState) {
+                if (context.mounted) {
+                  setState(() {});
+                }
+              }
+            },
+            itemBuilder: (BuildContext context) =>
+                <PopupMenuEntry<ProductListItemPopupItem>>[
+              if (userPreferences.getFlag(UserPreferencesDevMode
+                      .userPreferencesFlagBoostedComparison) ==
+                  true)
+                _sideBySideItems.getMenuItem(
+                  appLocalizations,
+                  _selectedBarcodes.length >= 2 &&
+                      _selectedBarcodes.length <= 3,
+                ),
+              _rankItems.getMenuItem(
+                appLocalizations,
+                _selectedBarcodes.length >= 2,
+              ),
+              _deleteItems.getMenuItem(
+                appLocalizations,
+                _selectedBarcodes.isNotEmpty,
+              ),
+            ],
+          ),
+        ],
       ),
       body: products.isEmpty
-          ? Padding(
-              padding: const EdgeInsets.all(SMALL_SPACE),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: <Widget>[
-                  SvgPicture.asset(
-                    'assets/misc/empty-list.svg',
-                    package: AppHelper.APP_PACKAGE,
-                    width: MediaQuery.of(context).size.width / 2,
-                  ),
-                  Text(
-                    appLocalizations.product_list_empty_message,
-                    textAlign: TextAlign.center,
-                    style: themeData.textTheme.bodyMedium?.apply(
-                      color: themeData.colorScheme.onBackground,
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(SMALL_SPACE),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: <Widget>[
+                    SvgPicture.asset(
+                      'assets/misc/empty-list.svg',
+                      package: AppHelper.APP_PACKAGE,
+                      width: MediaQuery.of(context).size.width / 2,
                     ),
-                  ),
-                  EMPTY_WIDGET,
-                ],
+                    Text(
+                      appLocalizations.product_list_empty_message,
+                      textAlign: TextAlign.center,
+                      style: themeData.textTheme.bodyMedium?.apply(
+                        color: themeData.colorScheme.onBackground,
+                      ),
+                    ),
+                    EMPTY_WIDGET,
+                  ],
+                ),
               ),
             )
           : WillPopScope(
@@ -275,6 +300,16 @@ class _ProductListPageState extends State<ProductListPage>
     );
   }
 
+  double _computeModalInitHeight(BuildContext context) {
+    if (context.isSmallDevice()) {
+      return 0.7;
+    } else if (context.isSmartphoneDevice()) {
+      return 0.55;
+    } else {
+      return 0.45;
+    }
+  }
+
   Widget _buildItem(
     final bool dismissible,
     final List<String> barcodes,
@@ -296,8 +331,8 @@ class _ProductListPageState extends State<ProductListPage>
     final Widget child = InkWell(
       onTap: _selectionMode ? onTap : null,
       child: Container(
-        padding: EdgeInsets.only(
-          left: _selectionMode ? SMALL_SPACE : 0,
+        padding: EdgeInsetsDirectional.only(
+          start: _selectionMode ? SMALL_SPACE : 0,
         ),
         child: Row(
           children: <Widget>[
@@ -317,7 +352,12 @@ class _ProductListPageState extends State<ProductListPage>
                 barcode: barcode,
                 onTap: _selectionMode ? onTap : null,
                 onLongPress: !_selectionMode
-                    ? () => setState(() => _selectionMode = true)
+                    ? () => setState(
+                          () {
+                            _selectedBarcodes.add(barcode);
+                            _selectionMode = true;
+                          },
+                        )
                     : null,
               ),
             ),
@@ -329,7 +369,7 @@ class _ProductListPageState extends State<ProductListPage>
       return Dismissible(
         direction: DismissDirection.endToStart,
         background: Container(
-          alignment: Alignment.centerRight,
+          alignment: AlignmentDirectional.centerEnd,
           margin: const EdgeInsets.symmetric(vertical: 14),
           color: RED_COLOR,
           padding: const EdgeInsetsDirectional.only(end: 30),
@@ -345,6 +385,12 @@ class _ProductListPageState extends State<ProductListPage>
           if (removed) {
             await DaoProductList(localDatabase).put(productList);
             removedFromSelectedBarcodes = _selectedBarcodes.remove(barcode);
+
+            if (productList.listType == ProductListType.SCAN_SESSION &&
+                mounted) {
+              context.read<ContinuousScanModel>().removeBarcode(barcode);
+            }
+
             setState(() => barcodes.removeAt(index));
           }
           if (!mounted) {
@@ -355,7 +401,7 @@ class _ProductListPageState extends State<ProductListPage>
             SnackBar(
               content: Text(
                 removed
-                    ? appLocalizations.product_removed_history
+                    ? appLocalizations.product_removed_list
                     : appLocalizations.product_could_not_remove,
               ),
               duration: SnackBarDuration.medium,
@@ -419,8 +465,9 @@ class _ProductListPageState extends State<ProductListPage>
         setState(() {});
         return;
       case false:
-        // ignore: use_build_context_synchronously
-        LoadingDialog.error(context: context);
+        if (context.mounted) {
+          LoadingDialog.error(context: context);
+        }
         return;
     }
   }
@@ -433,15 +480,8 @@ class _ProductListPageState extends State<ProductListPage>
     try {
       final SearchResult searchResult = await OpenFoodAPIClient.searchProducts(
         ProductQuery.getUser(),
-        ProductSearchQueryConfiguration(
-          fields: ProductQuery.fields,
-          language: ProductQuery.getLanguage(),
-          country: ProductQuery.getCountry(),
-          parametersList: <Parameter>[
-            BarcodeParameter.list(barcodes),
-          ],
-          version: ProductQuery.productQueryVersion,
-        ),
+        ProductRefresher().getBarcodeListQueryConfiguration(barcodes),
+        uriHelper: ProductQuery.uriProductHelper,
       );
       final List<Product>? freshProducts = searchResult.products;
       if (freshProducts == null) {
@@ -457,55 +497,5 @@ class _ProductListPageState extends State<ProductListPage>
       //
     }
     return false;
-  }
-}
-
-class _CompareProductsButton extends StatelessWidget {
-  const _CompareProductsButton({
-    required this.selectedBarcodes,
-    required this.barcodes,
-    this.onComparisonEnded,
-    Key? key,
-  }) : super(key: key);
-
-  final Set<String> selectedBarcodes;
-  final List<String> barcodes;
-  final VoidCallback? onComparisonEnded;
-
-  @override
-  Widget build(BuildContext context) {
-    final AppLocalizations appLocalizations = AppLocalizations.of(context);
-
-    if (selectedBarcodes.length < 2) {
-      return EMPTY_WIDGET;
-    }
-
-    return FloatingActionButton.extended(
-      label: Text(appLocalizations.compare_products_mode),
-      icon: const Icon(Icons.compare_arrows),
-      tooltip: appLocalizations.plural_compare_x_products(
-        selectedBarcodes.length,
-      ),
-      onPressed: () async {
-        final List<String> list = <String>[];
-        for (final String barcode in barcodes) {
-          if (selectedBarcodes.contains(barcode)) {
-            list.add(barcode);
-          }
-        }
-
-        await Navigator.push<void>(
-          context,
-          MaterialPageRoute<void>(
-            builder: (_) => PersonalizedRankingPage(
-              barcodes: list,
-              title: appLocalizations.product_list_your_ranking,
-            ),
-          ),
-        );
-
-        onComparisonEnded?.call();
-      },
-    );
   }
 }

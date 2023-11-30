@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:async/async.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:scanner_shared/scanner_shared.dart';
@@ -21,6 +22,9 @@ class ScannerMLKit extends Scanner {
             {int? eventValue, String? barcode})
         trackCustomEvent,
     required bool hasMoreThanOneCamera,
+    String? toggleCameraModeTooltip,
+    String? toggleFlashModeTooltip,
+    EdgeInsetsGeometry? contentPadding,
   }) {
     return _SmoothBarcodeScannerMLKit(
       onScan: onScan,
@@ -28,6 +32,9 @@ class ScannerMLKit extends Scanner {
       trackCustomEvent: trackCustomEvent,
       onCameraFlashError: onCameraFlashError,
       hasMoreThanOneCamera: hasMoreThanOneCamera,
+      toggleCameraModeTooltip: toggleCameraModeTooltip,
+      toggleFlashModeTooltip: toggleFlashModeTooltip,
+      contentPadding: contentPadding,
     );
   }
 }
@@ -40,6 +47,9 @@ class _SmoothBarcodeScannerMLKit extends StatefulWidget {
     required this.trackCustomEvent,
     required this.onCameraFlashError,
     required this.hasMoreThanOneCamera,
+    this.toggleCameraModeTooltip,
+    this.toggleFlashModeTooltip,
+    this.contentPadding,
   });
 
   final Future<bool> Function(String) onScan;
@@ -50,12 +60,16 @@ class _SmoothBarcodeScannerMLKit extends StatefulWidget {
   final Function(BuildContext)? onCameraFlashError;
   final bool hasMoreThanOneCamera;
 
+  final EdgeInsetsGeometry? contentPadding;
+  final String? toggleCameraModeTooltip;
+  final String? toggleFlashModeTooltip;
+
   @override
   State<StatefulWidget> createState() => _SmoothBarcodeScannerMLKitState();
 }
 
 class _SmoothBarcodeScannerMLKitState extends State<_SmoothBarcodeScannerMLKit>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   // just 1D formats and ios supported
   static const List<BarcodeFormat> _barcodeFormats = <BarcodeFormat>[
     BarcodeFormat.code39,
@@ -68,7 +82,8 @@ class _SmoothBarcodeScannerMLKitState extends State<_SmoothBarcodeScannerMLKit>
     BarcodeFormat.upcE,
   ];
 
-  static const double _cornerPadding = 26;
+  static const ValueKey<String> _visibilityKey =
+      ValueKey<String>('VisibilityDetector');
 
   bool _isStarted = true;
 
@@ -84,6 +99,88 @@ class _SmoothBarcodeScannerMLKitState extends State<_SmoothBarcodeScannerMLKit>
     returnImage: false,
     autoStart: true,
   );
+
+  // Stores a background operation when the screen isn't visible
+  CancelableOperation<void>? _autoStopCameraOperation;
+  // Stores the latest visibility value of the screen
+  VisibilityInfo? _latestVisibilityInfoEvent;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+
+    if (state == AppLifecycleState.paused) {
+      _stop();
+    } else if (state == AppLifecycleState.resumed) {
+      _autoStopCameraOperation?.cancel();
+      _checkIfAppIsRestarting();
+    }
+  }
+
+  void _checkIfAppIsRestarting([int retry = 0]) {
+    /// When the app is resumed (from the launcher for example), the camera is
+    /// always started due to the [autostart] feature and we can't
+    /// prevent this behavior.
+    ///
+    /// To fix it, we check when the app is resumed if the camera is the
+    /// visible page and if that's not the case, we wait for the camera to be
+    /// initialized to stop it.
+    ///
+    /// Comment from @g123k: This is a very hacky way (temporary I hope) and
+    /// more explanation are available on the PR:
+    /// [https://github.com/openfoodfacts/smooth-app/pull/4292]
+    ///
+    // ignore: prefer_function_declarations_over_variables
+    final Function fn = () {
+      if (ScreenVisibilityDetector.invisible(context)) {
+        _pauseCameraWhenInitialized();
+      } else if (retry < 1) {
+        // In 99% of cases, this won't happen, but if for some reason, we are
+        // "considered" as visible, we will retry in a few milliseconds
+        // and if we are still invisible -> force stop the camera
+        _autoStopCameraOperation = CancelableOperation<void>.fromFuture(
+          Future<void>.delayed(
+            const Duration(milliseconds: 500),
+            () => _checkIfAppIsRestarting(retry + 1),
+          ),
+        );
+      } else if (_latestVisibilityInfoEvent?.visible == false) {
+        _pauseCameraWhenInitialized();
+      }
+    };
+
+    // Ensure to wait for the first frame
+    if (retry == 0) {
+      // ignore: avoid_dynamic_calls
+      WidgetsBinding.instance.addPostFrameCallback((_) => fn.call());
+    } else {
+      // ignore: avoid_dynamic_calls
+      scheduleMicrotask(() => fn.call());
+    }
+  }
+
+  Future<void> _pauseCameraWhenInitialized() async {
+    if (!mounted) {
+      return;
+    }
+
+    if (_controller.isStarting) {
+      _autoStopCameraOperation = CancelableOperation<void>.fromFuture(
+        Future<void>.delayed(
+          const Duration(milliseconds: 250),
+          () => _pauseCameraWhenInitialized(),
+        ),
+      );
+    }
+
+    _controller.stop();
+  }
 
   Future<void> _start() async {
     if (_isStarted) {
@@ -102,6 +199,7 @@ class _SmoothBarcodeScannerMLKitState extends State<_SmoothBarcodeScannerMLKit>
   }
 
   Future<void> _stop() async {
+    _autoStopCameraOperation?.cancel();
     if (!_isStarted) {
       return;
     }
@@ -115,124 +213,140 @@ class _SmoothBarcodeScannerMLKitState extends State<_SmoothBarcodeScannerMLKit>
   }
 
   @override
-  Widget build(BuildContext context) => VisibilityDetector(
-        key: const ValueKey<String>('VisibilityDetector'),
-        onVisibilityChanged: (final VisibilityInfo info) async {
-          if (info.visibleBounds.height > 0.0) {
-            await _start();
-          } else {
-            await _stop();
-          }
-        },
-        child: Stack(
-          children: <Widget>[
-            MobileScanner(
-              controller: _controller,
-              fit: BoxFit.cover,
-              errorBuilder: (
-                BuildContext context,
-                MobileScannerException error,
-                Widget? child,
-              ) =>
-                  EMPTY_WIDGET,
-              onDetect: (final BarcodeCapture capture) async {
-                for (final Barcode barcode in capture.barcodes) {
-                  final String? string = barcode.displayValue;
-                  if (string != null) {
-                    await widget.onScan(string);
-                  }
+  Widget build(BuildContext context) {
+    return VisibilityDetector(
+      key: _visibilityKey,
+      onVisibilityChanged: (final VisibilityInfo info) async {
+        _latestVisibilityInfoEvent = info;
+        if (info.visibleBounds.height > 0.0) {
+          await _start();
+        } else {
+          await _stop();
+        }
+      },
+      child: Stack(
+        children: <Widget>[
+          MobileScanner(
+            controller: _controller,
+            fit: BoxFit.cover,
+            errorBuilder: (
+              BuildContext context,
+              MobileScannerException error,
+              Widget? child,
+            ) =>
+                EMPTY_WIDGET,
+            onDetect: (final BarcodeCapture capture) async {
+              for (final Barcode barcode in capture.barcodes) {
+                final String? string = barcode.displayValue;
+                if (string != null) {
+                  await widget.onScan(string);
                 }
-              },
+              }
+            },
+          ),
+          Center(
+            child: SmoothBarcodeScannerVisor(
+              contentPadding: widget.contentPadding,
             ),
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.all(_cornerPadding),
-                child: SmoothBarcodeScannerVisor(),
+          ),
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Padding(
+              padding: const EdgeInsets.all(
+                SmoothBarcodeScannerVisor.CORNER_PADDING,
               ),
-            ),
-            Align(
-              alignment: Alignment.bottomCenter,
-              child: Padding(
-                padding: const EdgeInsets.all(_cornerPadding),
-                child: Row(
-                  mainAxisAlignment: _showFlipCameraButton
-                      ? MainAxisAlignment.spaceBetween
-                      : MainAxisAlignment.end,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: <Widget>[
-                    if (_showFlipCameraButton)
-                      IconButton(
-                        color: Colors.white,
-                        icon: ValueListenableBuilder<CameraFacing>(
-                          valueListenable: _controller.cameraFacingState,
+              child: Row(
+                mainAxisAlignment: _showFlipCameraButton
+                    ? MainAxisAlignment.spaceBetween
+                    : MainAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: <Widget>[
+                  if (_showFlipCameraButton)
+                    VisorButton(
+                      onTap: () async {
+                        widget.hapticFeedback.call();
+                        await _controller.switchCamera();
+                      },
+                      tooltip: widget.toggleCameraModeTooltip ??
+                          'Switch between back and front camera',
+                      child: ValueListenableBuilder<CameraFacing>(
+                        valueListenable: _controller.cameraFacingState,
+                        builder: (
+                          BuildContext context,
+                          CameraFacing state,
+                          Widget? child,
+                        ) {
+                          switch (state) {
+                            case CameraFacing.front:
+                              return const Icon(Icons.camera_front);
+                            case CameraFacing.back:
+                              return const Icon(Icons.camera_rear);
+                          }
+                        },
+                      ),
+                    ),
+                  ValueListenableBuilder<bool?>(
+                    valueListenable: _controller.hasTorchState,
+                    builder: (
+                      BuildContext context,
+                      bool? state,
+                      Widget? child,
+                    ) {
+                      if (state != true) {
+                        return const SizedBox.shrink();
+                      }
+                      return VisorButton(
+                        tooltip: widget.toggleFlashModeTooltip ??
+                            'Turn ON or OFF the flash of the camera',
+                        onTap: () async {
+                          widget.hapticFeedback.call();
+
+                          try {
+                            await _controller.toggleTorch();
+                          } catch (err) {
+                            if (context.mounted) {
+                              widget.onCameraFlashError?.call(context);
+                            }
+                          }
+                        },
+                        child: ValueListenableBuilder<TorchState>(
+                          valueListenable: _controller.torchState,
                           builder: (
                             BuildContext context,
-                            CameraFacing state,
+                            TorchState state,
                             Widget? child,
                           ) {
                             switch (state) {
-                              case CameraFacing.front:
-                                return const Icon(Icons.camera_front);
-                              case CameraFacing.back:
-                                return const Icon(Icons.camera_rear);
+                              case TorchState.off:
+                                return const Icon(
+                                  Icons.flash_off,
+                                  color: Colors.white,
+                                );
+                              case TorchState.on:
+                                return const Icon(
+                                  Icons.flash_on,
+                                  color: Colors.white,
+                                );
                             }
                           },
                         ),
-                        onPressed: () async {
-                          widget.hapticFeedback.call();
-                          await _controller.switchCamera();
-                        },
-                      ),
-                    ValueListenableBuilder<bool?>(
-                      valueListenable: _controller.hasTorchState,
-                      builder: (
-                        BuildContext context,
-                        bool? state,
-                        Widget? child,
-                      ) {
-                        if (state != true) {
-                          return const SizedBox.shrink();
-                        }
-                        return IconButton(
-                          color: Colors.white,
-                          icon: ValueListenableBuilder<TorchState>(
-                            valueListenable: _controller.torchState,
-                            builder: (
-                              BuildContext context,
-                              TorchState state,
-                              Widget? child,
-                            ) {
-                              switch (state) {
-                                case TorchState.off:
-                                  return const Icon(
-                                    Icons.flash_off,
-                                    color: Colors.white,
-                                  );
-                                case TorchState.on:
-                                  return const Icon(
-                                    Icons.flash_on,
-                                    color: Colors.white,
-                                  );
-                              }
-                            },
-                          ),
-                          onPressed: () async {
-                            widget.hapticFeedback.call();
-
-                            try {
-                              await _controller.toggleTorch();
-                            } catch (err) {
-                              widget.onCameraFlashError?.call(context);
-                            }
-                          },
-                        );
-                      },
-                    ),
-                  ],
-                ),
+                      );
+                    },
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
-      );
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _autoStopCameraOperation?.cancel();
+    _controller.dispose();
+    super.dispose();
+  }
 }

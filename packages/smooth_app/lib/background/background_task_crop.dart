@@ -5,10 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:openfoodfacts/openfoodfacts.dart';
 import 'package:provider/provider.dart';
-import 'package:smooth_app/background/abstract_background_task.dart';
+import 'package:smooth_app/background/background_task_barcode.dart';
 import 'package:smooth_app/background/background_task_refresh_later.dart';
 import 'package:smooth_app/background/background_task_upload.dart';
-import 'package:smooth_app/data_models/operation_type.dart';
+import 'package:smooth_app/background/operation_type.dart';
 import 'package:smooth_app/database/local_database.dart';
 import 'package:smooth_app/query/product_query.dart';
 
@@ -32,62 +32,21 @@ class BackgroundTaskCrop extends BackgroundTaskUpload {
     required this.imageId,
   });
 
-  BackgroundTaskCrop._fromJson(Map<String, dynamic> json)
-      : this._(
-          processName: json['processName'] as String,
-          uniqueId: json['uniqueId'] as String,
-          barcode: json['barcode'] as String,
-          languageCode: json['languageCode'] as String,
-          user: json['user'] as String,
-          country: json['country'] as String,
-          imageId: json['imageId'] as int,
-          imageField: json['imageField'] as String,
-          croppedPath: json['croppedPath'] as String,
-          rotationDegrees: json['rotation'] as int,
-          cropX1: json['x1'] as int? ?? 0,
-          cropY1: json['y1'] as int? ?? 0,
-          cropX2: json['x2'] as int? ?? 0,
-          cropY2: json['y2'] as int? ?? 0,
-          stamp: json['stamp'] as String,
-        );
+  BackgroundTaskCrop.fromJson(Map<String, dynamic> json)
+      : imageId = json[_jsonTagImageId] as int,
+        super.fromJson(json);
 
-  /// Task ID.
-  static const String _PROCESS_NAME = 'IMAGE_CROP';
+  static const String _jsonTagImageId = 'imageId';
 
   static const OperationType _operationType = OperationType.crop;
 
   final int imageId;
 
   @override
-  Map<String, dynamic> toJson() => <String, dynamic>{
-        'processName': processName,
-        'uniqueId': uniqueId,
-        'barcode': barcode,
-        'languageCode': languageCode,
-        'user': user,
-        'country': country,
-        'imageId': imageId,
-        'imageField': imageField,
-        'croppedPath': croppedPath,
-        'stamp': stamp,
-        'rotation': rotationDegrees,
-        'x1': cropX1,
-        'y1': cropY1,
-        'x2': cropX2,
-        'y2': cropY2,
-      };
-
-  /// Returns the deserialized background task if possible, or null.
-  static AbstractBackgroundTask? fromJson(final Map<String, dynamic> map) {
-    try {
-      final AbstractBackgroundTask result = BackgroundTaskCrop._fromJson(map);
-      if (result.processName == _PROCESS_NAME) {
-        return result;
-      }
-    } catch (e) {
-      //
-    }
-    return null;
+  Map<String, dynamic> toJson() {
+    final Map<String, dynamic> result = super.toJson();
+    result[_jsonTagImageId] = imageId;
+    return result;
   }
 
   /// Adds the background task about uploading a product image.
@@ -102,14 +61,14 @@ class BackgroundTaskCrop extends BackgroundTaskUpload {
     required final int y1,
     required final int x2,
     required final int y2,
-    required final State<StatefulWidget> widget,
+    required final BuildContext context,
   }) async {
-    final LocalDatabase localDatabase = widget.context.read<LocalDatabase>();
+    final LocalDatabase localDatabase = context.read<LocalDatabase>();
     final String uniqueId = await _operationType.getNewKey(
       localDatabase,
-      barcode,
+      barcode: barcode,
     );
-    final AbstractBackgroundTask task = _getNewTask(
+    final BackgroundTaskBarcode task = _getNewTask(
       language,
       barcode,
       imageId,
@@ -122,12 +81,19 @@ class BackgroundTaskCrop extends BackgroundTaskUpload {
       x2,
       y2,
     );
-    await task.addToManager(localDatabase, widget: widget);
+    if (!context.mounted) {
+      return;
+    }
+    await task.addToManager(localDatabase, context: context);
   }
 
   @override
-  String? getSnackBarMessage(final AppLocalizations appLocalizations) =>
-      appLocalizations.product_task_background_schedule;
+  (String, AlignmentGeometry)? getFloatingMessage(
+          final AppLocalizations appLocalizations) =>
+      (
+        appLocalizations.product_task_background_schedule,
+        AlignmentDirectional.topCenter,
+      );
 
   /// Returns a new background task about cropping an existing image.
   static BackgroundTaskCrop _getNewTask(
@@ -146,7 +112,7 @@ class BackgroundTaskCrop extends BackgroundTaskUpload {
       BackgroundTaskCrop._(
         uniqueId: uniqueId,
         barcode: barcode,
-        processName: _PROCESS_NAME,
+        processName: _operationType.processName,
         imageId: imageId,
         imageField: imageField.offTag,
         croppedPath: croppedFile.path,
@@ -157,7 +123,7 @@ class BackgroundTaskCrop extends BackgroundTaskUpload {
         cropY2: cropY2,
         languageCode: language.code,
         user: jsonEncode(ProductQuery.getUser().toJson()),
-        country: ProductQuery.getCountry()!.offTag,
+        country: ProductQuery.getCountry().offTag,
         stamp: BackgroundTaskUpload.getStamp(
           barcode,
           imageField.offTag,
@@ -174,7 +140,7 @@ class BackgroundTaskCrop extends BackgroundTaskUpload {
         images: <ProductImage>[_getProductImage()],
       ),
     );
-    putTransientImage(localDatabase);
+    await putTransientImage(localDatabase);
   }
 
   /// Returns the actual crop parameters.
@@ -198,9 +164,9 @@ class BackgroundTaskCrop extends BackgroundTaskUpload {
     final LocalDatabase localDatabase,
     final bool success,
   ) async {
-    localDatabase.upToDate.terminate(uniqueId);
+    await super.postExecute(localDatabase, success);
     try {
-      File(croppedPath).deleteSync();
+      (await getFile(croppedPath)).deleteSync();
     } catch (e) {
       // not likely, but let's not spoil the task for that either.
     }
@@ -228,6 +194,7 @@ class BackgroundTaskCrop extends BackgroundTaskUpload {
       x2: productImage.x2!,
       y2: productImage.y2!,
       user: getUser(),
+      uriHelper: uriProductHelper,
     );
     if (imageUrl == null) {
       throw Exception('Could not select picture');

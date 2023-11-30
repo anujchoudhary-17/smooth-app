@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:smooth_app/background/background_task_manager.dart';
-import 'package:smooth_app/data_models/operation_type.dart';
+import 'package:smooth_app/background/background_task_progressing.dart';
+import 'package:smooth_app/background/operation_type.dart';
 import 'package:smooth_app/database/dao_instant_string.dart';
 import 'package:smooth_app/database/local_database.dart';
 import 'package:smooth_app/generic_lib/dialogs/smooth_alert_dialog.dart';
+import 'package:smooth_app/widgets/smooth_app_bar.dart';
 
 class OfflineTaskPage extends StatefulWidget {
   const OfflineTaskPage();
@@ -22,8 +24,18 @@ class _OfflineTaskState extends State<OfflineTaskPage> {
     final DaoInstantString daoInstantString = DaoInstantString(localDatabase);
     final List<String> taskIds = localDatabase.getAllTaskIds();
     return Scaffold(
-      appBar: AppBar(
-        title: Text(appLocalizations.background_task_title),
+      appBar: SmoothAppBar(
+        title: Text(
+          appLocalizations.background_task_title,
+          maxLines: 2,
+        ),
+        actions: <Widget>[
+          IconButton(
+            onPressed: () => // no await
+                BackgroundTaskManager.getInstance(localDatabase).run(),
+            icon: const Icon(Icons.refresh),
+          ),
+        ],
       ),
       body: taskIds.isEmpty
           ? Center(
@@ -38,6 +50,19 @@ class _OfflineTaskState extends State<OfflineTaskPage> {
                     taskId,
                   ),
                 );
+                final String barcode = OperationType.getBarcode(taskId);
+                final int? totalSize = OperationType.getTotalSize(taskId);
+                final int? soFarSize = OperationType.getSoFarSize(taskId);
+                final String? workText = _getWorkText(taskId);
+                final String info;
+                if (barcode != BackgroundTaskProgressing.noBarcode) {
+                  info = '$barcode ';
+                } else if (totalSize != null && soFarSize != null) {
+                  info =
+                      '${(100 * soFarSize) ~/ totalSize}% ${workText == null ? '' : '- $workText '}';
+                } else {
+                  info = '';
+                }
                 return ListTile(
                   onTap: () async {
                     final bool? stopTask = await showDialog<bool>(
@@ -57,13 +82,13 @@ class _OfflineTaskState extends State<OfflineTaskPage> {
                       ),
                     );
                     if (stopTask == true) {
-                      await BackgroundTaskManager(localDatabase)
+                      await BackgroundTaskManager.getInstance(localDatabase)
                           .removeTaskAsap(taskId);
                     }
                   },
                   title: Text(
-                    '${OperationType.getBarcode(taskId)}'
-                    ' (${OperationType.getOperationType(taskId)?.getLabel(
+                    '$info'
+                    '(${OperationType.getOperationType(taskId)?.getLabel(
                           appLocalizations,
                         ) ?? appLocalizations.background_task_operation_unknown})',
                   ),
@@ -89,6 +114,27 @@ class _OfflineTaskState extends State<OfflineTaskPage> {
       case BackgroundTaskManager.taskStatusStopAsap:
         return appLocalizations.background_task_run_to_be_deleted;
     }
-    return status!;
+    // "startsWith" because there's some kind of "chr(13)" at the end.
+    if (status.startsWith(
+        'Exception: JSON expected, html found: <head><title>504 Gateway Time-out</title></head>')) {
+      return appLocalizations.background_task_error_server_time_out;
+    }
+    return status;
+  }
+
+  String? _getWorkText(final String taskId) {
+    final String? work = OperationType.getWork(taskId);
+    switch (work) {
+      case null:
+      case '':
+        return null;
+      case BackgroundTaskProgressing.workOffline:
+        return 'Top products';
+      case BackgroundTaskProgressing.workFreshWithoutKP:
+        return 'Refresh products without KP';
+      case BackgroundTaskProgressing.workFreshWithKP:
+        return 'Refresh products with KP';
+    }
+    return 'Unknown work ($work)!';
   }
 }

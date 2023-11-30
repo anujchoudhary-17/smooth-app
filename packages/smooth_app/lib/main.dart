@@ -2,27 +2,28 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:app_store_shared/app_store_shared.dart';
+import 'package:dart_ping_ios/dart_ping_ios.dart';
 import 'package:device_preview/device_preview.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
+import 'package:matomo_tracker/matomo_tracker.dart';
 import 'package:openfoodfacts/openfoodfacts.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
 import 'package:scanner_shared/scanner_shared.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:smooth_app/data_models/continuous_scan_model.dart';
+import 'package:smooth_app/data_models/preferences/user_preferences.dart';
 import 'package:smooth_app/data_models/product_preferences.dart';
 import 'package:smooth_app/data_models/user_management_provider.dart';
-import 'package:smooth_app/data_models/user_preferences.dart';
 import 'package:smooth_app/database/dao_string.dart';
 import 'package:smooth_app/database/local_database.dart';
 import 'package:smooth_app/helpers/analytics_helper.dart';
 import 'package:smooth_app/helpers/camera_helper.dart';
-import 'package:smooth_app/helpers/data_importer/smooth_app_data_importer.dart';
 import 'package:smooth_app/helpers/entry_points_helper.dart';
 import 'package:smooth_app/helpers/global_vars.dart';
 import 'package:smooth_app/helpers/network_config.dart';
@@ -30,6 +31,7 @@ import 'package:smooth_app/helpers/permission_helper.dart';
 import 'package:smooth_app/pages/navigator/app_navigator.dart';
 import 'package:smooth_app/pages/onboarding/onboarding_flow_navigator.dart';
 import 'package:smooth_app/query/product_query.dart';
+import 'package:smooth_app/resources/app_animations.dart';
 import 'package:smooth_app/services/smooth_services.dart';
 import 'package:smooth_app/themes/color_provider.dart';
 import 'package:smooth_app/themes/contrast_provider.dart';
@@ -100,7 +102,6 @@ class SmoothApp extends StatefulWidget {
   State<SmoothApp> createState() => _SmoothAppState();
 }
 
-late SmoothAppDataImporter _appDataImporter;
 late UserPreferences _userPreferences;
 late ProductPreferences _productPreferences;
 late LocalDatabase _localDatabase;
@@ -120,12 +121,12 @@ Future<bool> _init1() async {
     return false;
   }
 
+  DartPingIOS.register();
   await SmoothServices().init(GlobalVars.appStore);
   await setupAppNetworkConfig();
   await UserManagementProvider.mountCredentials();
   _userPreferences = await UserPreferences.getUserPreferences();
   _localDatabase = await LocalDatabase.getLocalDatabase();
-  _appDataImporter = SmoothAppDataImporter(_localDatabase);
   await _continuousScanModel.load(_localDatabase);
   _productPreferences = ProductPreferences(
     ProductPreferencesSelection(
@@ -137,8 +138,9 @@ Future<bool> _init1() async {
   );
   UserManagementProvider().checkUserLoginValidity();
 
-  AnalyticsHelper.setCrashReports(_userPreferences.crashReports);
-  await ProductQuery.setCountry(_userPreferences);
+  AnalyticsHelper.linkPreferences(_userPreferences);
+
+  await ProductQuery.initCountry(_userPreferences);
   _themeProvider = ThemeProvider(_userPreferences);
   _colorProvider = ColorProvider(_userPreferences);
   _textContrastProvider = TextContrastProvider(_userPreferences);
@@ -155,8 +157,7 @@ class _SmoothAppState extends State<SmoothApp> {
       UserManagementProvider();
 
   bool systemDarkmodeOn = false;
-  final Brightness brightness =
-      SchedulerBinding.instance.window.platformBrightness;
+  final Brightness brightness = PlatformDispatcher.instance.platformBrightness;
 
   // We store the argument of FutureBuilder to avoid re-initialization on
   // subsequent builds. This enables hot reloading. See
@@ -189,6 +190,11 @@ class _SmoothAppState extends State<SmoothApp> {
       future: _initFuture,
       builder: (BuildContext context, AsyncSnapshot<void> snapshot) {
         if (snapshot.hasError) {
+          Logs.e(
+            'The app initialisation failed',
+            ex: snapshot.error,
+            stacktrace: snapshot.stackTrace,
+          );
           FlutterNativeSplash.remove();
           return _buildError(snapshot);
         }
@@ -217,10 +223,17 @@ class _SmoothAppState extends State<SmoothApp> {
             provide<TextContrastProvider>(_textContrastProvider),
             provide<UserManagementProvider>(_userManagementProvider),
             provide<ContinuousScanModel>(_continuousScanModel),
-            provide<SmoothAppDataImporter>(_appDataImporter),
             provide<PermissionListener>(_permissionListener),
           ],
-          child: AppNavigator(child: Builder(builder: _buildApp)),
+          child: AnimationsLoader(
+            child: AppNavigator(
+              observers: <NavigatorObserver>[
+                SentryNavigatorObserver(),
+                matomoObserver,
+              ],
+              child: Builder(builder: _buildApp),
+            ),
+          ),
         );
       },
     );
@@ -244,22 +257,33 @@ class _SmoothAppState extends State<SmoothApp> {
     final String? languageCode =
         context.select((UserPreferences up) => up.appLanguageCode);
 
-    return MaterialApp.router(
-      locale: languageCode != null ? Locale(languageCode) : null,
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      debugShowCheckedModeBanner: !(kReleaseMode || _screenshots),
-      theme: SmoothTheme.getThemeData(
-          Brightness.light, themeProvider, colorProvider, textContrastProvider),
-      darkTheme: SmoothTheme.getThemeData(
-          Brightness.dark, themeProvider, colorProvider, textContrastProvider),
-      themeMode: themeProvider.currentThemeMode,
-      routerConfig: AppNavigator.of(context).router,
+    return SentryScreenshotWidget(
+      child: MaterialApp.router(
+        locale: languageCode != null ? Locale(languageCode) : null,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        debugShowCheckedModeBanner: !(kReleaseMode || _screenshots),
+        theme: SmoothTheme.getThemeData(
+          Brightness.light,
+          themeProvider,
+          colorProvider,
+          textContrastProvider,
+        ),
+        darkTheme: SmoothTheme.getThemeData(
+          Brightness.dark,
+          themeProvider,
+          colorProvider,
+          textContrastProvider,
+        ),
+        themeMode: themeProvider.currentThemeMode,
+        routerConfig: AppNavigator.of(context).router,
+      ),
     );
   }
 
   Widget _buildError(AsyncSnapshot<void> snapshot) {
     return MaterialApp(
+      theme: ThemeData(useMaterial3: false),
       home: SmoothScaffold(
         body: Center(
           child: Text(

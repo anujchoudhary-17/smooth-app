@@ -1,11 +1,11 @@
 import 'dart:convert';
-import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:openfoodfacts/openfoodfacts.dart';
 import 'package:provider/provider.dart';
-import 'package:smooth_app/background/abstract_background_task.dart';
-import 'package:smooth_app/data_models/operation_type.dart';
+import 'package:smooth_app/background/background_task_barcode.dart';
+import 'package:smooth_app/background/operation_type.dart';
 import 'package:smooth_app/database/local_database.dart';
 import 'package:smooth_app/query/product_query.dart';
 
@@ -32,7 +32,7 @@ enum BackgroundTaskDetailsStamp {
 }
 
 /// Background task that changes product details (data, but no image upload).
-class BackgroundTaskDetails extends AbstractBackgroundTask {
+class BackgroundTaskDetails extends BackgroundTaskBarcode {
   const BackgroundTaskDetails._({
     required super.processName,
     required super.uniqueId,
@@ -44,26 +44,11 @@ class BackgroundTaskDetails extends AbstractBackgroundTask {
     required this.inputMap,
   });
 
-  BackgroundTaskDetails._fromJson(Map<String, dynamic> json)
-      : this._(
-          processName: json['processName'] as String,
-          uniqueId: json['uniqueId'] as String,
-          barcode: json['barcode'] as String,
-          languageCode: json['languageCode'] as String,
-          user: json['user'] as String,
-          country: json['country'] as String,
-          inputMap: json['inputMap'] as String,
-          // dealing with when 'stamp' did not exist
-          stamp: json.containsKey('stamp')
-              ? json['stamp'] as String
-              : getStamp(
-                  json['barcode'] as String,
-                  '${Random().nextInt(1000000000)}',
-                ),
-        );
+  BackgroundTaskDetails.fromJson(Map<String, dynamic> json)
+      : inputMap = json[_jsonTagInputMap] as String,
+        super.fromJson(json);
 
-  /// Task ID.
-  static const String _PROCESS_NAME = 'PRODUCT_EDIT';
+  static const String _jsonTagInputMap = 'inputMap';
 
   static const OperationType _operationType = OperationType.details;
 
@@ -71,68 +56,50 @@ class BackgroundTaskDetails extends AbstractBackgroundTask {
   final String inputMap;
 
   @override
-  Map<String, dynamic> toJson() => <String, dynamic>{
-        'processName': processName,
-        'uniqueId': uniqueId,
-        'barcode': barcode,
-        'languageCode': languageCode,
-        'user': user,
-        'country': country,
-        'inputMap': inputMap,
-        'stamp': stamp,
-      };
-
-  /// Returns the deserialized background task if possible, or null.
-  static BackgroundTaskDetails? fromJson(final Map<String, dynamic> map) {
-    try {
-      final BackgroundTaskDetails result = BackgroundTaskDetails._fromJson(map);
-      if (result.processName == _PROCESS_NAME) {
-        return result;
-      }
-    } catch (e) {
-      //
-    }
-    return null;
+  Map<String, dynamic> toJson() {
+    final Map<String, dynamic> result = super.toJson();
+    result[_jsonTagInputMap] = inputMap;
+    return result;
   }
 
   @override
   Future<void> preExecute(final LocalDatabase localDatabase) async =>
       localDatabase.upToDate.addChange(uniqueId, _getProduct());
 
-  @override
-  Future<void> postExecute(
-    final LocalDatabase localDatabase,
-    final bool success,
-  ) async =>
-      localDatabase.upToDate.terminate(uniqueId);
-
   /// Adds the background task about changing a product.
   static Future<void> addTask(
     final Product minimalistProduct, {
-    required final State<StatefulWidget> widget,
+    required final BuildContext context,
     required final BackgroundTaskDetailsStamp stamp,
     final bool showSnackBar = true,
   }) async {
-    final LocalDatabase localDatabase = widget.context.read<LocalDatabase>();
+    final LocalDatabase localDatabase = context.read<LocalDatabase>();
     final String uniqueId = await _operationType.getNewKey(
       localDatabase,
-      minimalistProduct.barcode!,
+      barcode: minimalistProduct.barcode,
     );
-    final AbstractBackgroundTask task = _getNewTask(
+    final BackgroundTaskBarcode task = _getNewTask(
       minimalistProduct,
       uniqueId,
       stamp,
     );
+    if (!context.mounted) {
+      return;
+    }
     await task.addToManager(
       localDatabase,
-      widget: widget,
+      context: context,
       showSnackBar: showSnackBar,
     );
   }
 
   @override
-  String? getSnackBarMessage(final AppLocalizations appLocalizations) =>
-      appLocalizations.product_task_background_schedule;
+  (String, AlignmentGeometry)? getFloatingMessage(
+          final AppLocalizations appLocalizations) =>
+      (
+        appLocalizations.product_task_background_schedule,
+        AlignmentDirectional.bottomCenter,
+      );
 
   /// Returns a new background task about changing a product.
   static BackgroundTaskDetails _getNewTask(
@@ -142,12 +109,12 @@ class BackgroundTaskDetails extends AbstractBackgroundTask {
   ) =>
       BackgroundTaskDetails._(
         uniqueId: uniqueId,
-        processName: _PROCESS_NAME,
+        processName: _operationType.processName,
         barcode: minimalistProduct.barcode!,
         languageCode: ProductQuery.getLanguage().code,
         inputMap: jsonEncode(minimalistProduct.toJson()),
         user: jsonEncode(ProductQuery.getUser().toJson()),
-        country: ProductQuery.getCountry()!.offTag,
+        country: ProductQuery.getCountry().offTag,
         stamp: getStamp(minimalistProduct.barcode!, stamp.tag),
       );
 
@@ -161,6 +128,8 @@ class BackgroundTaskDetails extends AbstractBackgroundTask {
     result.lang = getLanguage();
     return result;
   }
+
+  static const String _invalidUserError = 'invalid_user_id_and_password';
 
   /// Uploads the product changes.
   @override
@@ -177,10 +146,23 @@ class BackgroundTaskDetails extends AbstractBackgroundTask {
         packagingsComplete: product.packagingsComplete,
         language: getLanguage(),
         country: getCountry(),
+        uriHelper: uriProductHelper,
       );
       if (result.status != ProductResultV3.statusSuccess &&
           result.status != ProductResultV3.statusWarning) {
-        throw Exception('Could not save product - ${result.errors}');
+        bool isInvalidUser = false;
+        if (result.errors != null) {
+          for (final ProductResultFieldAnswer answer in result.errors!) {
+            if (answer.message?.id == _invalidUserError) {
+              isInvalidUser = true;
+            }
+          }
+        }
+        throw Exception(
+          'Could not save product'
+          ' - '
+          '${result.errors}${isInvalidUser ? _getIncompleteUserData() : ''}',
+        );
       }
       return;
     }
@@ -189,9 +171,39 @@ class BackgroundTaskDetails extends AbstractBackgroundTask {
       product,
       language: getLanguage(),
       country: getCountry(),
+      uriHelper: uriProductHelper,
     );
     if (status.status != 1) {
-      throw Exception('Could not save product - ${status.error}');
+      bool isInvalidUser = false;
+      if (status.error != null) {
+        if (status.error!.contains(_invalidUserError)) {
+          isInvalidUser = true;
+        }
+      }
+      throw Exception(
+        'Could not save product'
+        ' - '
+        '${status.error}${isInvalidUser ? _getIncompleteUserData() : ''}',
+      );
     }
+  }
+
+  String _getIncompleteUserData() {
+    final User user = getUser();
+    final StringBuffer result = StringBuffer();
+    result.write(' [user:');
+    result.write(user.userId);
+    final int length = user.password.length;
+    result.write(' (');
+    if (length >= 8) {
+      result.write(user.password.substring(0, 2));
+      result.write('*' * (length - 4));
+      result.write(user.password.substring(length - 2));
+    } else {
+      result.write('passwordLength:$length');
+    }
+    result.write(')');
+    result.write('] ');
+    return result.toString();
   }
 }

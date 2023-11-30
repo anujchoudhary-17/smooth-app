@@ -4,8 +4,9 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:matomo_tracker/matomo_tracker.dart';
 import 'package:openfoodfacts/openfoodfacts.dart';
 import 'package:provider/provider.dart';
+import 'package:smooth_app/data_models/login_result.dart';
+import 'package:smooth_app/data_models/preferences/user_preferences.dart';
 import 'package:smooth_app/data_models/user_management_provider.dart';
-import 'package:smooth_app/data_models/user_preferences.dart';
 import 'package:smooth_app/generic_lib/design_constants.dart';
 import 'package:smooth_app/generic_lib/dialogs/smooth_alert_dialog.dart';
 import 'package:smooth_app/generic_lib/widgets/smooth_card.dart';
@@ -17,6 +18,7 @@ import 'package:smooth_app/helpers/user_feedback_helper.dart';
 import 'package:smooth_app/pages/user_management/forgot_password_page.dart';
 import 'package:smooth_app/pages/user_management/sign_up_page.dart';
 import 'package:smooth_app/services/smooth_services.dart';
+import 'package:smooth_app/widgets/smooth_app_bar.dart';
 import 'package:smooth_app/widgets/smooth_scaffold.dart';
 
 class LoginPage extends StatefulWidget {
@@ -28,7 +30,7 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> with TraceableClientMixin {
   bool _runningQuery = false;
-  bool _wrongCredentials = false;
+  LoginResult? _loginResult;
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
@@ -45,17 +47,17 @@ class _LoginPageState extends State<LoginPage> with TraceableClientMixin {
 
     setState(() {
       _runningQuery = true;
-      _wrongCredentials = false;
+      _loginResult = null;
     });
 
-    final bool login = await userManagementProvider.login(
+    _loginResult = await userManagementProvider.login(
       User(
         userId: userIdController.text,
         password: passwordController.text,
       ),
     );
 
-    if (login) {
+    if (_loginResult!.type == LoginResultType.successful) {
       AnalyticsHelper.trackEvent(AnalyticsEvent.loginAction);
       if (!mounted) {
         return;
@@ -68,18 +70,12 @@ class _LoginPageState extends State<LoginPage> with TraceableClientMixin {
       }
       Navigator.pop(context);
     } else {
-      setState(() {
-        _runningQuery = false;
-        _wrongCredentials = true;
-      });
+      setState(() => _runningQuery = false);
     }
   }
 
   @override
-  String get traceTitle => 'login_page';
-
-  @override
-  String get traceName => 'Opened login_page';
+  String get actionName => 'Opened login_page';
 
   @override
   void dispose() {
@@ -98,7 +94,7 @@ class _LoginPageState extends State<LoginPage> with TraceableClientMixin {
       statusBarBackgroundColor: SmoothScaffold.semiTranslucentStatusBar,
       contentBehindStatusBar: true,
       fixKeyboard: true,
-      appBar: AppBar(
+      appBar: SmoothAppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: IconThemeData(
@@ -112,9 +108,9 @@ class _LoginPageState extends State<LoginPage> with TraceableClientMixin {
             child: Container(
               alignment: Alignment.topCenter,
               width: double.infinity,
-              padding: EdgeInsets.only(
-                left: size.width * 0.15,
-                right: size.width * 0.15,
+              padding: EdgeInsetsDirectional.only(
+                start: size.width * 0.15,
+                end: size.width * 0.15,
                 bottom: size.width * 0.05,
               ),
               child: AutofillGroup(
@@ -142,26 +138,29 @@ class _LoginPageState extends State<LoginPage> with TraceableClientMixin {
                         height: LARGE_SPACE * 3,
                       ),
 
-                      if (_wrongCredentials) ...<Widget>[
-                        SmoothCard(
-                          padding: const EdgeInsets.all(10.0),
-                          color: const Color(0xFFFF4446),
-                          child: Text(
-                            appLocalizations.incorrect_credentials,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              fontSize: 18.0,
-                              color: const Color(0xFF000000),
+                      if (_loginResult != null &&
+                          _loginResult!.type != LoginResultType.successful)
+                        Padding(
+                          padding: const EdgeInsets.only(
+                            bottom: 10.0 + LARGE_SPACE * 2,
+                          ),
+                          child: SmoothCard(
+                            padding: const EdgeInsets.all(10.0),
+                            color: const Color(0xFFEB0004),
+                            child: Text(
+                              _loginResult!.getErrorMessage(appLocalizations),
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                fontSize: 18.0,
+                                color: const Color(0xFF000000),
+                              ),
+                              textAlign: TextAlign.center,
                             ),
                           ),
                         ),
-                        const SizedBox(
-                          height: LARGE_SPACE * 2,
-                        ),
-                      ],
                       //Login
                       SmoothTextFormField(
                         type: TextFieldTypes.PLAIN_TEXT,
-                        textInputType: TextInputType.name,
+                        textInputType: TextInputType.emailAddress,
                         controller: userIdController,
                         hintText: appLocalizations.username_or_email,
                         prefixIcon: const Icon(Icons.person),
@@ -372,7 +371,9 @@ class _LoginPageState extends State<LoginPage> with TraceableClientMixin {
         },
       );
       if (enjoyingApp != null && !enjoyingApp) {
-        // ignore: use_build_context_synchronously
+        if (!context.mounted) {
+          return;
+        }
         await showDialog<bool>(
           context: context,
           builder: (BuildContext context) {
@@ -401,7 +402,9 @@ class _LoginPageState extends State<LoginPage> with TraceableClientMixin {
       }
       bool? userRatedApp;
       if (enjoyingApp != null && enjoyingApp) {
-        // ignore: use_build_context_synchronously
+        if (!context.mounted) {
+          return;
+        }
         userRatedApp = await showDialog<bool>(
           context: context,
           builder: (BuildContext context) {

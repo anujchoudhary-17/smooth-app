@@ -5,6 +5,8 @@ import 'package:openfoodfacts/openfoodfacts.dart';
 import 'package:smooth_app/generic_lib/design_constants.dart';
 import 'package:smooth_app/generic_lib/widgets/smooth_card.dart';
 import 'package:smooth_app/generic_lib/widgets/smooth_text_form_field.dart';
+import 'package:smooth_app/query/product_query.dart';
+import 'package:smooth_app/widgets/smooth_app_bar.dart';
 import 'package:smooth_app/widgets/smooth_scaffold.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
@@ -30,30 +32,32 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
     }
     setState(() => _runningQuery = true);
 
-    Status? status;
     try {
-      status = await OpenFoodAPIClient.resetPassword(_userIdController.text);
-    } catch (e) {
-      status = null;
+      final Status status = await OpenFoodAPIClient.resetPassword(
+        _userIdController.text,
+        country: ProductQuery.getCountry(),
+        language: ProductQuery.getLanguage(),
+        uriHelper: ProductQuery.uriProductHelper,
+      );
+      if (status.status == 200) {
+        _send = true;
+        _message = appLocalizations.reset_password_done;
+      } else if (status.status == 400) {
+        _message = appLocalizations.password_lost_incorrect_credentials;
+      } else if (status.status as int >= 500) {
+        _message = appLocalizations.password_lost_server_unavailable;
+      } else {
+        _message = '${appLocalizations.error} (${status.status})';
+      }
+    } catch (exception) {
+      _message = '${appLocalizations.error} ($exception)';
     }
-    if (status == null) {
-      _message = appLocalizations.error;
-    } else if (status.status == 200) {
-      _send = true;
-      _message = appLocalizations.reset_password_done;
-    } else if (status.status == 400) {
-      _message = appLocalizations.incorrect_credentials;
-    } else {
-      _message = appLocalizations.error;
-    }
+
     setState(() => _runningQuery = false);
   }
 
   @override
-  String get traceTitle => 'forgot_password_page';
-
-  @override
-  String get traceName => 'Opened forgot_password_page';
+  String get actionName => 'Opened forgot_password_page';
 
   @override
   void dispose() {
@@ -68,7 +72,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
     final Size size = MediaQuery.of(context).size;
 
     return SmoothScaffold(
-      appBar: AppBar(
+      appBar: SmoothAppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: IconThemeData(

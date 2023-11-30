@@ -2,12 +2,13 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:openfoodfacts/openfoodfacts.dart';
-import 'package:smooth_app/background/abstract_background_task.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:smooth_app/background/background_task_barcode.dart';
 import 'package:smooth_app/database/local_database.dart';
 import 'package:smooth_app/database/transient_file.dart';
 
-/// Background task about generic file upload.
-abstract class BackgroundTaskUpload extends AbstractBackgroundTask {
+/// Abstract background task about generic file upload.
+abstract class BackgroundTaskUpload extends BackgroundTaskBarcode {
   const BackgroundTaskUpload({
     required super.processName,
     required super.uniqueId,
@@ -25,6 +26,16 @@ abstract class BackgroundTaskUpload extends AbstractBackgroundTask {
     required this.cropY2,
   });
 
+  BackgroundTaskUpload.fromJson(Map<String, dynamic> json)
+      : imageField = json[_jsonTagImageField] as String,
+        croppedPath = json[_jsonTagCroppedPath] as String,
+        rotationDegrees = json[_jsonTagRotation] as int? ?? 0,
+        cropX1 = json[_jsonTagX1] as int? ?? 0,
+        cropY1 = json[_jsonTagY1] as int? ?? 0,
+        cropX2 = json[_jsonTagX2] as int? ?? 0,
+        cropY2 = json[_jsonTagY2] as int? ?? 0,
+        super.fromJson(json);
+
   final String imageField;
   final String croppedPath;
   final int rotationDegrees;
@@ -33,6 +44,27 @@ abstract class BackgroundTaskUpload extends AbstractBackgroundTask {
   final int cropX2;
   final int cropY2;
 
+  static const String _jsonTagImageField = 'imageField';
+  static const String _jsonTagCroppedPath = 'croppedPath';
+  static const String _jsonTagRotation = 'rotation';
+  static const String _jsonTagX1 = 'x1';
+  static const String _jsonTagY1 = 'y1';
+  static const String _jsonTagX2 = 'x2';
+  static const String _jsonTagY2 = 'y2';
+
+  @override
+  Map<String, dynamic> toJson() {
+    final Map<String, dynamic> result = super.toJson();
+    result[_jsonTagImageField] = imageField;
+    result[_jsonTagCroppedPath] = croppedPath;
+    result[_jsonTagRotation] = rotationDegrees;
+    result[_jsonTagX1] = cropX1;
+    result[_jsonTagY1] = cropY1;
+    result[_jsonTagX2] = cropX2;
+    result[_jsonTagY2] = cropY2;
+    return result;
+  }
+
   TransientFile _getTransientFile() => TransientFile(
         ImageField.fromOffTag(imageField)!,
         barcode,
@@ -40,10 +72,10 @@ abstract class BackgroundTaskUpload extends AbstractBackgroundTask {
       );
 
   @protected
-  void putTransientImage(final LocalDatabase localDatabase) =>
+  Future<void> putTransientImage(final LocalDatabase localDatabase) async =>
       _getTransientFile().putImage(
         localDatabase,
-        File(croppedPath),
+        await getFile(croppedPath),
       );
 
   @protected
@@ -56,7 +88,7 @@ abstract class BackgroundTaskUpload extends AbstractBackgroundTask {
   Future<void> recover(final LocalDatabase localDatabase) async {
     final File? transientFile = _getTransientImage();
     if (transientFile == null) {
-      putTransientImage(localDatabase);
+      await putTransientImage(localDatabase);
     }
   }
 
@@ -66,4 +98,25 @@ abstract class BackgroundTaskUpload extends AbstractBackgroundTask {
     final String language,
   ) =>
       '$barcode;image;$imageField;$language';
+
+  static Future<Directory> getDirectory() async =>
+      getApplicationSupportDirectory();
+
+  /// Returns a "safe" [File] from a given [path].
+  ///
+  /// iOS sometimes changes the path of its standard app folders, like the one
+  /// we use in [getDirectory].
+  /// With this method we refresh the path for iOS.
+  /// cf. https://github.com/openfoodfacts/smooth-app/issues/4725
+  @protected
+  Future<File> getFile(String path) async {
+    if (Platform.isIOS) {
+      final int lastSeparator = path.lastIndexOf('/');
+      final String filename =
+          lastSeparator == -1 ? path : path.substring(lastSeparator + 1);
+      final Directory directory = await getDirectory();
+      path = '${directory.path}/$filename';
+    }
+    return File(path);
+  }
 }

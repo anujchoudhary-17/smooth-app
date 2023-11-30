@@ -7,8 +7,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:openfoodfacts/openfoodfacts.dart';
 import 'package:provider/provider.dart';
 import 'package:smooth_app/data_models/onboarding_data_product.dart';
+import 'package:smooth_app/data_models/preferences/user_preferences.dart';
 import 'package:smooth_app/data_models/product_preferences.dart';
-import 'package:smooth_app/data_models/user_preferences.dart';
 import 'package:smooth_app/database/local_database.dart';
 import 'package:smooth_app/generic_lib/design_constants.dart';
 import 'package:smooth_app/helpers/app_helper.dart';
@@ -73,8 +73,6 @@ class _Helper extends StatefulWidget {
 }
 
 class _HelperState extends State<_Helper> {
-  bool _isProductExpanded = false;
-
   @override
   Widget build(BuildContext context) {
     final ProductPreferences productPreferences =
@@ -98,30 +96,25 @@ class _HelperState extends State<_Helper> {
           style: Theme.of(context).textTheme.displayMedium,
         ),
       ),
-      Container(
-        height: _isProductExpanded ? null : 180,
+      Padding(
         padding: const EdgeInsetsDirectional.only(
           bottom: LARGE_SPACE,
           start: LARGE_SPACE,
           end: LARGE_SPACE,
         ),
-        child: GestureDetector(
-          onTap: () => _expandProductCard(),
-          child: SummaryCard(
-            widget.product,
-            productPreferences,
-            isFullVersion: _isProductExpanded,
-            isRemovable: false,
-            isSettingClickable: false,
-            isProductEditable: false,
-          ),
+        child: SummaryCard(
+          widget.product,
+          productPreferences,
+          isFullVersion: true,
+          isRemovable: false,
+          isSettingVisible: false,
+          isProductEditable: false,
         ),
       ),
     ];
     pageData.addAll(
       UserPreferencesFood(
         productPreferences: productPreferences,
-        setState: setState,
         context: context,
         userPreferences: userPreferences,
         appLocalizations: appLocalizations,
@@ -138,11 +131,13 @@ class _HelperState extends State<_Helper> {
           children: <Widget>[
             Flexible(
               flex: 1,
-              child: ListView.builder(
-                padding: const EdgeInsetsDirectional.only(top: LARGE_SPACE),
-                itemCount: pageData.length,
-                itemBuilder: (BuildContext context, int position) =>
-                    pageData[position],
+              child: Scrollbar(
+                child: ListView.builder(
+                  padding: const EdgeInsetsDirectional.only(top: LARGE_SPACE),
+                  itemCount: pageData.length,
+                  itemBuilder: (BuildContext context, int position) =>
+                      pageData[position],
+                ),
               ),
             ),
             NextButton(
@@ -154,11 +149,5 @@ class _HelperState extends State<_Helper> {
         ),
       ),
     );
-  }
-
-  void _expandProductCard() {
-    if (!_isProductExpanded) {
-      setState(() => _isProductExpanded = true);
-    }
   }
 }

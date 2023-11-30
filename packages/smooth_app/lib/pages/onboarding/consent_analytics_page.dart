@@ -4,10 +4,9 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 import 'package:smooth_app/data_models/onboarding_loader.dart';
-import 'package:smooth_app/data_models/user_preferences.dart';
+import 'package:smooth_app/data_models/preferences/user_preferences.dart';
 import 'package:smooth_app/database/local_database.dart';
 import 'package:smooth_app/generic_lib/design_constants.dart';
-import 'package:smooth_app/helpers/analytics_helper.dart';
 import 'package:smooth_app/helpers/app_helper.dart';
 import 'package:smooth_app/pages/onboarding/onboarding_bottom_bar.dart';
 import 'package:smooth_app/pages/onboarding/onboarding_flow_navigator.dart';
@@ -73,14 +72,14 @@ class ConsentAnalyticsPage extends StatelessWidget {
             ),
           ),
           OnboardingBottomBar(
-            leftButton: _buildButton(
+            startButton: _buildButton(
               context,
               appLocalizations.refuse_button_label,
               false,
               const Color(0xFFA08D84),
               Colors.white,
             ),
-            rightButton: _buildButton(
+            endButton: _buildButton(
               context,
               appLocalizations.authorize_button_label,
               true,
@@ -104,14 +103,20 @@ class ConsentAnalyticsPage extends StatelessWidget {
     final ThemeProvider themeProvider,
   ) async {
     await userPreferences.setCrashReports(accept);
-    AnalyticsHelper.setAnalyticsReports(accept);
+    await userPreferences.setUserTracking(accept);
+
     themeProvider.finishOnboarding();
-    //ignore: use_build_context_synchronously
+    if (!context.mounted) {
+      return;
+    }
     await OnboardingLoader(localDatabase).runAtNextTime(
       _onboardingPage,
       context,
     );
-    //ignore: use_build_context_synchronously
+
+    if (!context.mounted) {
+      return;
+    }
     await OnboardingFlowNavigator(userPreferences).navigateToPage(
       context,
       _onboardingPage.getNextPage(),

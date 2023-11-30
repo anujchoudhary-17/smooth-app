@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:smooth_app/generic_lib/buttons/smooth_simple_button.dart';
 import 'package:smooth_app/generic_lib/design_constants.dart';
 import 'package:smooth_app/generic_lib/widgets/smooth_responsive.dart';
+import 'package:smooth_app/helpers/app_helper.dart';
+import 'package:smooth_app/helpers/keyboard_helper.dart';
 
 /// Custom Dialog to use in the app
 ///
@@ -28,7 +32,12 @@ class SmoothAlertDialog extends StatelessWidget {
     this.actionsAxis,
     this.actionsOrder,
     this.close = false,
-  });
+    this.margin,
+    this.contentPadding,
+  }) : assert(
+          body is! LayoutBuilder,
+          "LayoutBuilder isn't supported with Dialogs",
+        );
 
   final String? title;
   final bool close;
@@ -37,30 +46,41 @@ class SmoothAlertDialog extends StatelessWidget {
   final SmoothActionButton? negativeAction;
   final Axis? actionsAxis;
   final SmoothButtonsBarOrder? actionsOrder;
+  final EdgeInsets? margin;
+  final EdgeInsetsDirectional? contentPadding;
 
-  static const EdgeInsets _smallContentPadding = EdgeInsets.only(
-    left: SMALL_SPACE,
+  /// Default value [_defaultInsetPadding] in dialog.dart
+  static const EdgeInsets defaultMargin = EdgeInsets.symmetric(
+    horizontal: 40.0,
+    vertical: 24.0,
+  );
+
+  static const EdgeInsetsDirectional _smallContentPadding =
+      EdgeInsetsDirectional.only(
+    start: SMALL_SPACE,
     top: MEDIUM_SPACE,
-    right: SMALL_SPACE,
+    end: SMALL_SPACE,
     bottom: SMALL_SPACE,
   );
 
-  static const EdgeInsets _contentPadding = EdgeInsets.only(
-    left: 22.0,
+  static const EdgeInsetsDirectional _contentPadding =
+      EdgeInsetsDirectional.only(
+    start: 22.0,
     top: VERY_LARGE_SPACE,
-    right: 22.0,
+    end: 22.0,
     bottom: 22.0,
   );
 
   @override
   Widget build(BuildContext context) {
     final Widget content = _buildContent(context);
-    final EdgeInsets padding =
-        context.isSmallDevice() ? _smallContentPadding : _contentPadding;
+    final EdgeInsetsDirectional padding =
+        contentPadding ?? defaultContentPadding(context);
 
     return AlertDialog(
       scrollable: false,
       elevation: 4.0,
+      insetPadding: margin ?? defaultMargin,
       contentPadding: EdgeInsets.zero,
       shape: const RoundedRectangleBorder(borderRadius: ROUNDED_BORDER_RADIUS),
       content: ClipRRect(
@@ -82,11 +102,20 @@ class SmoothAlertDialog extends StatelessWidget {
     );
   }
 
-  Padding _buildBottomBar(EdgeInsets padding) {
+  Padding _buildBottomBar(EdgeInsetsDirectional padding) {
+    final bool singleButton =
+        positiveAction != null && negativeAction == null ||
+            negativeAction != null && positiveAction == null;
+
     return Padding(
       padding: EdgeInsetsDirectional.only(
         top: padding.bottom,
-        start: SMALL_SPACE,
+        start: (actionsAxis == Axis.horizontal || singleButton)
+            ? SMALL_SPACE
+            : 0.0,
+        end: positiveAction != null && negativeAction != null
+            ? 0.0
+            : SMALL_SPACE,
       ),
       child: SmoothActionButtonsBar(
         positiveAction: positiveAction,
@@ -109,6 +138,10 @@ class SmoothAlertDialog extends StatelessWidget {
           ],
         ),
       );
+
+  static EdgeInsetsDirectional defaultContentPadding(BuildContext context) {
+    return (context.isSmallDevice() ? _smallContentPadding : _contentPadding);
+  }
 }
 
 class _SmoothDialogTitle extends StatelessWidget {
@@ -197,8 +230,9 @@ class _SmoothDialogCrossButton extends StatelessWidget {
 }
 
 enum SmoothButtonsBarOrder {
-  /// If the [axis] is [Axis.horizontal], the positive button will be on the end
-  /// If the [axis] is [Axis.vertical], the positive button will be on the start
+  /// If the [axis] is [Axis.horizontal], the positive button will be at the end
+  /// If the [axis] is [Axis.vertical], the positive button will be at the first
+  /// position
   auto,
 
   /// Whatever the [axis] is, the positive button will always be at first place
@@ -213,6 +247,7 @@ class SmoothActionButtonsBar extends StatelessWidget {
     this.negativeAction,
     this.axis,
     this.order,
+    this.padding,
     super.key,
   }) : assert(positiveAction != null || negativeAction != null,
             'At least one action must be passed!');
@@ -229,6 +264,7 @@ class SmoothActionButtonsBar extends StatelessWidget {
   final SmoothActionButton? negativeAction;
   final Axis? axis;
   final SmoothButtonsBarOrder? order;
+  final EdgeInsetsGeometry? padding;
 
   @override
   Widget build(BuildContext context) {
@@ -250,13 +286,17 @@ class SmoothActionButtonsBar extends StatelessWidget {
         );
       }
 
-      return Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: actions,
+      return Padding(
+        padding: padding ?? EdgeInsets.zero,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: actions,
+        ),
       );
     } else {
-      return SizedBox(
+      return Container(
         width: double.infinity,
+        padding: padding ?? EdgeInsets.zero,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.end,
           children: actions,
@@ -367,20 +407,27 @@ class _SmoothActionElevatedButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ThemeData themeData = Theme.of(context);
-    return SmoothSimpleButton(
-      onPressed: buttonData.onPressed,
-      minWidth: buttonData.minWidth ?? 20.0,
-      // Ensures FittedBox not used then even the one word text overflows into next line,
-      child: FittedBox(
-        fit: BoxFit.scaleDown,
-        child: Text(
-          buttonData.text.toUpperCase(),
-          textAlign: TextAlign.center,
-          overflow: TextOverflow.ellipsis,
-          maxLines: buttonData.lines ?? 2,
-          style: themeData.textTheme.bodyMedium!.copyWith(
-            fontWeight: FontWeight.bold,
-            color: buttonData.textColor ?? themeData.colorScheme.onPrimary,
+    return Semantics(
+      value: buttonData.text,
+      button: true,
+      excludeSemantics: true,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 30.0),
+        child: SmoothSimpleButton(
+          onPressed: buttonData.onPressed,
+          minWidth: buttonData.minWidth ?? 20.0,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              buttonData.text.toUpperCase(),
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
+              maxLines: buttonData.lines ?? 2,
+              style: themeData.textTheme.bodyMedium!.copyWith(
+                fontWeight: FontWeight.bold,
+                color: buttonData.textColor ?? themeData.colorScheme.onPrimary,
+              ),
+            ),
           ),
         ),
       ),
@@ -407,39 +454,223 @@ class _SmoothActionFlatButton extends StatelessWidget {
           ),
         ),
       ),
-      child: TextButton(
-        onPressed: buttonData.onPressed,
-        style: TextButton.styleFrom(
-          shape: const RoundedRectangleBorder(
-            borderRadius: ROUNDED_BORDER_RADIUS,
-          ),
-          textStyle: themeData.textTheme.bodyMedium!.copyWith(
-            color: themeData.colorScheme.onPrimary,
-          ),
-          padding: const EdgeInsets.symmetric(
-            horizontal: SMALL_SPACE,
-          ),
-        ),
-        child: SizedBox(
-          height: buttonData.lines != null
-              ? VERY_LARGE_SPACE * buttonData.lines!
-              : null,
-          width: buttonData.minWidth,
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              buttonData.text.toUpperCase(),
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: buttonData.textColor ?? themeData.colorScheme.primary,
+      child: Semantics(
+        value: buttonData.text,
+        button: true,
+        excludeSemantics: true,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 2.0),
+          child: TextButton(
+            onPressed: buttonData.onPressed,
+            style: TextButton.styleFrom(
+              shape: const RoundedRectangleBorder(
+                borderRadius: ROUNDED_BORDER_RADIUS,
               ),
-              textAlign: TextAlign.center,
-              overflow: TextOverflow.ellipsis,
-              maxLines: buttonData.lines ?? 2,
+              textStyle: themeData.textTheme.bodyMedium!.copyWith(
+                color: themeData.colorScheme.onPrimary,
+              ),
+              padding: const EdgeInsets.symmetric(
+                horizontal: SMALL_SPACE,
+              ),
+              minimumSize: const Size(0, 46.0),
+            ),
+            child: SizedBox(
+              height: buttonData.lines != null
+                  ? VERY_LARGE_SPACE * buttonData.lines!
+                  : null,
+              width: buttonData.minWidth,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  buttonData.text.toUpperCase(),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color:
+                        buttonData.textColor ?? themeData.colorScheme.primary,
+                  ),
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: buttonData.lines ?? 2,
+                ),
+              ),
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+/// A [Button] that can be displayed in the [body] of a [SmoothAlertDialog].
+class SmoothAlertContentButton extends StatelessWidget {
+  const SmoothAlertContentButton({
+    required this.label,
+    required this.onPressed,
+    this.icon,
+  });
+
+  final String label;
+  final IconData? icon;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextButton(
+      onPressed: onPressed,
+      child: FractionallySizedBox(
+        widthFactor: 0.8,
+        child: Row(
+          children: <Widget>[
+            Expanded(
+              child: Text(label),
+            ),
+            if (icon != null)
+              ExcludeSemantics(
+                child: Icon(icon),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A custom dialog where you only have to pass a [title] and a [message].
+/// By default an "OK" button will be show., but you can override it by passing
+/// a [positiveAction] and/or [negativeAction]
+class SmoothSimpleErrorAlertDialog extends StatelessWidget {
+  const SmoothSimpleErrorAlertDialog({
+    required this.title,
+    required this.message,
+    this.positiveAction,
+    this.negativeAction,
+    this.actionsAxis,
+    this.actionsOrder,
+    this.contentPadding,
+  });
+
+  final String title;
+  final String message;
+  final SmoothActionButton? positiveAction;
+  final SmoothActionButton? negativeAction;
+  final Axis? actionsAxis;
+  final SmoothButtonsBarOrder? actionsOrder;
+  final EdgeInsetsDirectional? contentPadding;
+
+  @override
+  Widget build(BuildContext context) {
+    final Widget content = Column(
+      children: <Widget>[
+        SvgPicture.asset(
+          'assets/misc/error.svg',
+          width: MINIMUM_TOUCH_SIZE * 2,
+          package: AppHelper.APP_PACKAGE,
+        ),
+        const SizedBox(height: MEDIUM_SPACE),
+        Text(
+          title,
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: LARGE_SPACE),
+        Text(
+          message,
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.3),
+        ),
+      ],
+    );
+
+    SmoothActionButton? positiveButton = positiveAction;
+    if (positiveAction == null && negativeAction == null) {
+      final AppLocalizations appLocalizations = AppLocalizations.of(context);
+      positiveButton = SmoothActionButton(
+        text: appLocalizations.okay,
+        onPressed: () => Navigator.of(context).maybePop(),
+      );
+    }
+
+    return SmoothAlertDialog(
+      body: content,
+      positiveAction: positiveButton,
+      negativeAction: negativeAction,
+      actionsAxis: actionsAxis,
+      actionsOrder: actionsOrder,
+      contentPadding: contentPadding,
+    );
+  }
+}
+
+class SmoothListAlertDialog extends StatelessWidget {
+  SmoothListAlertDialog({
+    required this.title,
+    required this.list,
+    this.header,
+    ScrollController? scrollController,
+    this.positiveAction,
+    this.negativeAction,
+    this.actionsAxis,
+    this.actionsOrder,
+  }) : _scrollController = scrollController ?? ScrollController();
+
+  final String title;
+  final Widget? header;
+  final Widget list;
+  final SmoothActionButton? positiveAction;
+  final SmoothActionButton? negativeAction;
+  final Axis? actionsAxis;
+  final SmoothButtonsBarOrder? actionsOrder;
+  final ScrollController _scrollController;
+
+  @override
+  Widget build(BuildContext context) {
+    return SmoothAlertDialog(
+      contentPadding: const EdgeInsetsDirectional.symmetric(
+        horizontal: 0.0,
+        vertical: SMALL_SPACE,
+      ),
+      body: SizedBox(
+        height: MediaQuery.of(context).size.height /
+            (context.keyboardVisible ? 1.0 : 1.5),
+        width: MediaQuery.of(context).size.width,
+        child: Column(
+          children: <Widget>[
+            Container(
+              alignment: AlignmentDirectional.centerStart,
+              padding: const EdgeInsetsDirectional.only(
+                start: 23.0,
+                end: 24.0,
+                top: SMALL_SPACE,
+              ),
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20.0,
+                ),
+              ),
+            ),
+            if (header != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: SMALL_SPACE,
+                  vertical: MEDIUM_SPACE,
+                ),
+                child: header,
+              ),
+            Expanded(
+              child: Scrollbar(
+                controller: _scrollController,
+                child: list,
+              ),
+            )
+          ],
+        ),
+      ),
+      positiveAction: positiveAction,
+      negativeAction: negativeAction,
+      actionsAxis: actionsAxis,
+      actionsOrder: actionsOrder,
     );
   }
 }

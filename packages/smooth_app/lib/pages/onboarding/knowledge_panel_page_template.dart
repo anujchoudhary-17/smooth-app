@@ -76,9 +76,9 @@ class _KnowledgePanelPageTemplateState
           if (snapshot.connectionState != ConnectionState.done) {
             return const Center(child: CircularProgressIndicator.adaptive());
           }
-          final List<Widget> children = KnowledgePanelWidget.getChildren(
+          final List<Widget> children = KnowledgePanelsBuilder.getChildren(
             context,
-            panelElement: KnowledgePanelWidget.getPanelElement(
+            panelElement: KnowledgePanelsBuilder.getRootPanelElement(
               _product,
               widget.panelId,
             )!,
@@ -98,36 +98,39 @@ class _KnowledgePanelPageTemplateState
                     children: <Widget>[
                       Flexible(
                         flex: 1,
-                        child: ListView(
-                          children: <Widget>[
-                            SvgPicture.asset(
-                              widget.svgAsset,
-                              height: MediaQuery.of(context).size.height * .25,
-                              package: AppHelper.APP_PACKAGE,
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: LARGE_SPACE,
+                        child: Scrollbar(
+                          child: ListView(
+                            children: <Widget>[
+                              SvgPicture.asset(
+                                widget.svgAsset,
+                                height:
+                                    MediaQuery.of(context).size.height * .25,
+                                package: AppHelper.APP_PACKAGE,
                               ),
-                              child: Text(
-                                widget.headerTitle,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .displayMedium
-                                    ?.wellSpaced,
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: LARGE_SPACE,
+                                ),
+                                child: Text(
+                                  widget.headerTitle,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .displayMedium
+                                      ?.wellSpaced,
+                                ),
                               ),
-                            ),
-                            if (children.isNotEmpty)
-                              KnowledgePanelProductCards(
-                                <Widget>[
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: children,
-                                  ),
-                                ],
-                              ),
-                          ],
+                              if (children.isNotEmpty)
+                                KnowledgePanelProductCards(
+                                  <Widget>[
+                                    Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: children,
+                                    ),
+                                  ],
+                                ),
+                            ],
+                          ),
                         ),
                       ),
                       NextButton(
@@ -156,12 +159,24 @@ class _KnowledgePanelPageTemplateState
           margin: const EdgeInsetsDirectional.only(
             start: VERY_LARGE_SPACE,
             top: 10,
-            end: VERY_LARGE_SPACE,
+            end: 10,
             bottom: 10,
           ),
-          child: Text(
-            appLocalizations.hint_knowledge_panel_message,
-            style: TextStyle(color: Theme.of(context).cardColor),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Expanded(
+                child: Text(
+                  appLocalizations.hint_knowledge_panel_message,
+                  style: TextStyle(color: Theme.of(context).cardColor),
+                ),
+              ),
+              const SizedBox(width: VERY_LARGE_SPACE),
+              Icon(
+                Icons.close,
+                color: Theme.of(context).cardColor,
+              ),
+            ],
           ),
         ),
       ),

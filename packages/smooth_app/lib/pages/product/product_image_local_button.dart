@@ -12,12 +12,16 @@ class ProductImageLocalButton extends StatefulWidget {
     required this.barcode,
     required this.imageField,
     required this.language,
+    required this.isLoggedInMandatory,
+    this.borderWidth,
   });
 
   final bool firstPhoto;
   final String barcode;
   final ImageField imageField;
   final OpenFoodFactsLanguage language;
+  final bool isLoggedInMandatory;
+  final double? borderWidth;
 
   @override
   State<ProductImageLocalButton> createState() =>
@@ -33,12 +37,15 @@ class _ProductImageLocalButtonState extends State<ProductImageLocalButton> {
       label:
           widget.firstPhoto ? appLocalizations.add : appLocalizations.capture,
       onPressed: () async => _actionNewImage(context),
+      borderWidth: widget.borderWidth,
     );
   }
 
   Future<void> _actionNewImage(final BuildContext context) async {
-    final bool loggedIn = await ProductRefresher().checkIfLoggedIn(context);
-    if (!loggedIn) {
+    if (!await ProductRefresher().checkIfLoggedIn(
+      context,
+      isLoggedInMandatory: widget.isLoggedInMandatory,
+    )) {
       return;
     }
     if (context.mounted) {
@@ -46,10 +53,11 @@ class _ProductImageLocalButtonState extends State<ProductImageLocalButton> {
       return;
     }
     await confirmAndUploadNewPicture(
-      this,
+      context,
       imageField: widget.imageField,
       barcode: widget.barcode,
       language: widget.language,
+      isLoggedInMandatory: widget.isLoggedInMandatory,
     );
   }
 }

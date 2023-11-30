@@ -9,17 +9,55 @@ import 'package:smooth_app/generic_lib/design_constants.dart';
 import 'package:smooth_app/generic_lib/widgets/smooth_card.dart';
 import 'package:smooth_app/helpers/image_field_extension.dart';
 import 'package:smooth_app/helpers/ui_helpers.dart';
+import 'package:smooth_app/query/product_query.dart';
 
-String getProductName(Product product, AppLocalizations appLocalizations) =>
-    product.productName ?? appLocalizations.unknownProductName;
+Widget buildProductTitle(
+  final Product product,
+  final AppLocalizations appLocalizations,
+) =>
+    Text(
+      getProductNameAndBrands(product, appLocalizations),
+      overflow: TextOverflow.ellipsis,
+      maxLines: 1,
+    );
 
-String getProductBrands(Product product, AppLocalizations appLocalizations) {
-  final String? brands = product.brands;
+String getProductNameAndBrands(
+  final Product product,
+  final AppLocalizations appLocalizations,
+) {
+  final String name = getProductName(product, appLocalizations);
+  final String brands = getProductBrands(product, appLocalizations);
+  return '$name, $brands';
+}
+
+/// Returns a trimmed version of the string, or null if null or empty.
+String? _clearString(final String? string) {
+  if (string == null) {
+    return null;
+  }
+  if (string.trim().isEmpty) {
+    return null;
+  }
+  return string.trim();
+}
+
+String getProductName(
+  final Product product,
+  final AppLocalizations appLocalizations,
+) =>
+    _clearString(product.productNameInLanguages?[ProductQuery.getLanguage()]) ??
+    _clearString(product.productName) ??
+    appLocalizations.unknownProductName;
+
+String getProductBrands(
+  final Product product,
+  final AppLocalizations appLocalizations,
+) {
+  final String? brands = _clearString(product.brands);
   if (brands == null) {
     return appLocalizations.unknownBrand;
-  } else {
-    return formatProductBrands(brands);
   }
+  return formatProductBrands(brands);
 }
 
 /// Correctly format word separators between words.
@@ -44,19 +82,18 @@ Widget buildProductSmoothCard({
   EdgeInsets? margin = const EdgeInsets.symmetric(
     horizontal: SMALL_SPACE,
   ),
-}) {
-  return SmoothCard(
-    margin: margin,
-    padding: padding,
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: <Widget>[
-        if (header != null) header,
-        body,
-      ],
-    ),
-  );
-}
+}) =>
+    SmoothCard(
+      margin: margin,
+      padding: padding,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          if (header != null) header,
+          body,
+        ],
+      ),
+    );
 
 // used to be in now defunct `AttributeListExpandable`
 List<Attribute> getPopulatedAttributes(
@@ -95,7 +132,24 @@ List<Attribute> getMandatoryAttributes(
   final List<String> attributeGroupOrder,
   final Set<String> attributesToExcludeIfStatusIsUnknown,
   final ProductPreferences preferences,
-) {
+) =>
+    getSortedAttributes(
+      product,
+      attributeGroupOrder,
+      attributesToExcludeIfStatusIsUnknown,
+      preferences,
+      PreferenceImportance.ID_MANDATORY,
+    );
+
+/// Returns the attributes, ordered by importance desc and attribute group order
+List<Attribute> getSortedAttributes(
+  final Product product,
+  final List<String> attributeGroupOrder,
+  final Set<String> attributesToExcludeIfStatusIsUnknown,
+  final ProductPreferences preferences,
+  final String importance, {
+  final bool excludeMainScoreAttributes = true,
+}) {
   final List<Attribute> result = <Attribute>[];
   if (product.attributeGroups == null) {
     return result;
@@ -106,9 +160,10 @@ List<Attribute> getMandatoryAttributes(
   for (final AttributeGroup attributeGroup in product.attributeGroups!) {
     mandatoryAttributesByGroup[attributeGroup.id!] = getFilteredAttributes(
       attributeGroup,
-      PreferenceImportance.ID_MANDATORY,
+      importance,
       attributesToExcludeIfStatusIsUnknown,
       preferences,
+      excludeMainScoreAttributes: excludeMainScoreAttributes,
     );
   }
 
@@ -131,15 +186,17 @@ List<Attribute> getFilteredAttributes(
   final AttributeGroup attributeGroup,
   final String importance,
   final Set<String> attributesToExcludeIfStatusIsUnknown,
-  final ProductPreferences preferences,
-) {
+  final ProductPreferences preferences, {
+  final bool excludeMainScoreAttributes = true,
+}) {
   final List<Attribute> result = <Attribute>[];
   if (attributeGroup.attributes == null) {
     return result;
   }
   for (final Attribute attribute in attributeGroup.attributes!) {
     final String attributeId = attribute.id!;
-    if (SCORE_ATTRIBUTE_IDS.contains(attributeId)) {
+    if (excludeMainScoreAttributes &&
+        SCORE_ATTRIBUTE_IDS.contains(attributeId)) {
       continue;
     }
     if (attributeGroup.id == AttributeGroup.ATTRIBUTE_GROUP_LABELS) {
@@ -157,6 +214,7 @@ List<Attribute> getFilteredAttributes(
 Widget addPanelButton(
   final String label, {
   final IconData? iconData,
+  final String? textAlign,
   required final Function() onPressed,
 }) =>
     Padding(
@@ -165,59 +223,53 @@ Widget addPanelButton(
         text: label,
         icon: iconData ?? Icons.add,
         onPressed: onPressed,
+        textAlign: iconData == null ? TextAlign.center : null,
       ),
     );
 
 List<ProductImageData> getProductMainImagesData(
   final Product product,
-  final OpenFoodFactsLanguage language, {
-  final bool includeOther = true,
-}) {
-  final List<ImageField> imageFields = List<ImageField>.of(
-    ImageFieldSmoothieExtension.orderedMain,
-    growable: true,
-  );
-  if (includeOther) {
-    imageFields.add(ImageField.OTHER);
-  }
+  final OpenFoodFactsLanguage language,
+) {
   final List<ProductImageData> result = <ProductImageData>[];
-  for (final ImageField element in imageFields) {
-    result.add(getProductImageData(product, element, language));
+  for (final ImageField imageField in ImageFieldSmoothieExtension.orderedMain) {
+    result.add(getProductImageData(product, imageField, language));
   }
   return result;
 }
 
-/// Returns data about the "best" image: for the language, or the default.
-///
-/// With [forceLanguage] you say you don't want the default as a fallback.
+/// Returns data about the [imageField], for the [language].
 ProductImageData getProductImageData(
   final Product product,
   final ImageField imageField,
-  final OpenFoodFactsLanguage language, {
-  final bool forceLanguage = false,
-}) {
+  final OpenFoodFactsLanguage language,
+) {
   final ProductImage? productImage = getLocalizedProductImage(
     product,
     imageField,
     language,
   );
-  final String? imageUrl;
-  final OpenFoodFactsLanguage? imageLanguage;
   if (productImage != null) {
     // we found a localized version for this image
-    imageLanguage = language;
-    imageUrl = getLocalizedProductImageUrl(product, productImage);
-  } else {
-    imageLanguage = null;
-    imageUrl = forceLanguage ? null : imageField.getUrl(product);
+    return ProductImageData(
+      imageField: imageField,
+      imageUrl: ImageHelper.getLocalizedProductImageUrl(
+        product.barcode!,
+        productImage,
+        imageSize: ImageSize.DISPLAY,
+      ),
+      language: language,
+    );
   }
-
-  return ProductImageData(
-    imageField: imageField,
-    imageUrl: imageUrl,
-    language: imageLanguage,
-  );
+  return getEmptyProductImageData(imageField);
 }
+
+ProductImageData getEmptyProductImageData(final ImageField imageField) =>
+    ProductImageData(
+      imageField: imageField,
+      imageUrl: null,
+      language: null,
+    );
 
 ProductImage? getLocalizedProductImage(
   final Product product,
@@ -237,52 +289,6 @@ ProductImage? getLocalizedProductImage(
   }
   return null;
 }
-
-List<MapEntry<ProductImageData, ImageProvider?>> getSelectedImages(
-  final Product product,
-  final OpenFoodFactsLanguage language,
-) {
-  final Map<ProductImageData, ImageProvider?> result =
-      <ProductImageData, ImageProvider?>{};
-  final List<ProductImageData> allProductImagesData =
-      getProductMainImagesData(product, language, includeOther: false);
-  for (final ProductImageData imageData in allProductImagesData) {
-    result[imageData] = TransientFile.fromProductImageData(
-      imageData,
-      product.barcode!,
-      language,
-    ).getImageProvider();
-  }
-  return result.entries.toList();
-}
-
-// TODO(monsieurtanuki): move to off-dart in ImageHelper
-String _getBarcodeSubPath(final String barcode) {
-  if (barcode.length < 9) {
-    return barcode;
-  }
-  final String p1 = barcode.substring(0, 3);
-  final String p2 = barcode.substring(3, 6);
-  final String p3 = barcode.substring(6, 9);
-  if (barcode.length == 9) {
-    return '$p1/$p2/$p3';
-  }
-  final String p4 = barcode.substring(9);
-  return '$p1/$p2/$p3/$p4';
-}
-
-String _getImageRoot() =>
-    OpenFoodAPIConfiguration.globalQueryType == QueryType.PROD
-        ? 'https://images.openfoodfacts.org/images/products'
-        : 'https://images.openfoodfacts.net/images/products';
-
-String getLocalizedProductImageUrl(
-  final Product product,
-  final ProductImage productImage,
-) =>
-    '${_getImageRoot()}/'
-    '${_getBarcodeSubPath(product.barcode!)}/'
-    '${ImageHelper.getProductImageFilename(productImage, imageSize: ImageSize.DISPLAY)}';
 
 /// Returns the languages for which [imageField] has images for that [product].
 Iterable<OpenFoodFactsLanguage> getProductImageLanguages(

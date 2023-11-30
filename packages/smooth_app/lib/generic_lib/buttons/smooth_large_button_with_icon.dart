@@ -1,9 +1,6 @@
-import 'dart:io';
-
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:smooth_app/generic_lib/buttons/smooth_simple_button.dart';
-import 'package:smooth_app/generic_lib/design_constants.dart';
 
 class SmoothLargeButtonWithIcon extends StatelessWidget {
   const SmoothLargeButtonWithIcon({
@@ -11,29 +8,49 @@ class SmoothLargeButtonWithIcon extends StatelessWidget {
     required this.icon,
     required this.onPressed,
     this.padding,
-    this.imageFile,
+    this.trailing,
+    this.backgroundColor,
+    this.foregroundColor,
+    this.textAlign,
+    this.textStyle,
   });
 
   final String text;
   final IconData icon;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
   final EdgeInsets? padding;
-  final File? imageFile;
+  final IconData? trailing;
+  final Color? backgroundColor;
+  final Color? foregroundColor;
+  final TextAlign? textAlign;
+  final TextStyle? textStyle;
+
+  Color _getBackgroundColor(final ThemeData themeData) =>
+      backgroundColor ?? themeData.colorScheme.secondary;
+
+  Color _getForegroundColor(final ThemeData themeData) =>
+      foregroundColor ?? themeData.colorScheme.onSecondary;
 
   @override
   Widget build(BuildContext context) {
     final ThemeData themeData = Theme.of(context);
+    TextStyle style = textStyle ?? themeData.textTheme.bodyMedium!;
+
+    if (foregroundColor != null) {
+      style = style.copyWith(color: _getForegroundColor(themeData));
+    }
+
     return SmoothSimpleButton(
       minWidth: double.infinity,
       padding: padding ?? const EdgeInsets.all(10),
       onPressed: onPressed,
-      buttonColor: themeData.colorScheme.secondary,
+      buttonColor: _getBackgroundColor(themeData),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.start,
         children: <Widget>[
           Icon(
             icon,
-            color: themeData.colorScheme.onSecondary,
+            color: _getForegroundColor(themeData),
           ),
           const Spacer(),
           Expanded(
@@ -41,22 +58,18 @@ class SmoothLargeButtonWithIcon extends StatelessWidget {
             child: AutoSizeText(
               text,
               maxLines: 2,
-              style: themeData.textTheme.bodyMedium!.copyWith(
-                color: themeData.colorScheme.onSecondary,
-              ),
+              minFontSize: 10,
+              textAlign: textAlign,
+              style: style,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
           const Spacer(),
-          if (imageFile != null)
-            SizedBox(
-              height: 50,
-              width: 50,
-              child: ClipRRect(
-                borderRadius: ROUNDED_BORDER_RADIUS,
-                child: Image.file(imageFile!, fit: BoxFit.cover),
-              ),
+          if (trailing != null)
+            Icon(
+              trailing,
+              color: _getForegroundColor(themeData),
             ),
-          if (imageFile != null) const Spacer(),
         ],
       ),
     );
